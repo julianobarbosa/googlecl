@@ -35,13 +35,8 @@ LOG = logging.getLogger(LOGGER_NAME)
 
 def determine_terminal_encoding(config=None):
   import sys
-  in_enc = ''
-  out_enc = ''
-  if sys.stdin.encoding:
-    in_enc = sys.stdin.encoding
-  if sys.stdout.encoding:
-    out_enc = sys.stdout.encoding
-
+  in_enc = sys.stdin.encoding if sys.stdin.encoding else ''
+  out_enc = sys.stdout.encoding if sys.stdout.encoding else ''
   # Sometimes these are both defined, and hopefully they are both equal.
   # I'm not sure if they are guaranteed to be equal.
   if in_enc.lower() == out_enc.lower():
@@ -56,15 +51,14 @@ def determine_terminal_encoding(config=None):
         return_enc = sys.getdefaultencoding()
     else:
       return_enc = in_enc
-  # If they are not equal, at least one of them must be defined.
   else:
     # Both defined, but are not the same
     if in_enc and out_enc:
       LOG.warning('HEY! You have a different encoding for input and output')
-      LOG.warning('Input: ' + in_enc)
-      LOG.warning('Output: ' + in_enc)
+      LOG.warning(f'Input: {in_enc}')
+      LOG.warning(f'Output: {in_enc}')
     return_enc = out_enc or in_enc
-  LOG.debug('determine_terminal_encoding(): ' + return_enc)
+  LOG.debug(f'determine_terminal_encoding(): {return_enc}')
   return return_enc
 
 
@@ -107,11 +101,7 @@ def build_titles_list(title, args):
 
 def get_extension_from_path(path):
   """Return the extension of a file."""
-  match = FILE_EXT_PATTERN.match(path)
-  if match:
-    return match.group(1)
-  else:
-    return None
+  return match.group(1) if (match := FILE_EXT_PATTERN.match(path)) else None
 
 
 def get_data_path(filename,
@@ -260,8 +250,7 @@ def safe_decode(string, current_encoding='utf-8', errors='strict'):
     try:
       return string.decode(current_encoding, errors)
     except UnicodeDecodeError:
-      raise SafeDecodeError(current_encoding + ' could not decode ' +
-                            repr(string))
+      raise SafeDecodeError(f'{current_encoding} could not decode {repr(string)}')
   elif isinstance(string, unicode):
     return string
   else:

@@ -194,7 +194,7 @@ def authenticate(auth_manager, options, config, section_header):
 # I don't know if this and shlex.split() can replace expand_as_command_line
 # because of the behavior of globbing characters that are in ""
 def expand_args(args, on_linesep, on_glob, on_homepath):
-  """Expands arguments list.
+    """Expands arguments list.
 
   Args:
     on_linesep: Set True to split on occurrences of os.linesep. This is
@@ -209,39 +209,37 @@ def expand_args(args, on_linesep, on_glob, on_homepath):
   Returns:
     List of arguments that have been expanded
   """
-  new_args = []
-  for arg in args:
-    temp_arg_list = None
-    if on_linesep:
-      temp_arg_list = arg.split(os.linesep)
-    if on_homepath:
-      if temp_arg_list:
-        tmp = []
-        for sub_arg in temp_arg_list:
-          tmp.append(os.path.expanduser(sub_arg))
-        temp_arg_list = tmp
-      else:
-        arg = os.path.expanduser(arg)
-    # Globbing needs to happen last, otherwise it wont be able to find
-    # any files.
-    if on_glob:
-      if temp_arg_list:
-        tmp = []
-        for sub_arg in temp_arg_list:
-          tmp.extend(glob.glob(sub_arg))
-        temp_arg_list = tmp
-      else:
-        temp_arg_list = glob.glob(arg)
+    new_args = []
+    for arg in args:
+        temp_arg_list = None
+        if on_linesep:
+          temp_arg_list = arg.split(os.linesep)
+        if on_homepath:
+            if temp_arg_list:
+                tmp = [os.path.expanduser(sub_arg) for sub_arg in temp_arg_list]
+                temp_arg_list = tmp
+            else:
+                arg = os.path.expanduser(arg)
+        # Globbing needs to happen last, otherwise it wont be able to find
+        # any files.
+        if on_glob:
+          if temp_arg_list:
+            tmp = []
+            for sub_arg in temp_arg_list:
+              tmp.extend(glob.glob(sub_arg))
+            temp_arg_list = tmp
+          else:
+            temp_arg_list = glob.glob(arg)
 
-    if temp_arg_list:
-      new_args.extend(temp_arg_list)
-    else:
-      new_args.append(arg)
-  return new_args
+        if temp_arg_list:
+          new_args.extend(temp_arg_list)
+        else:
+          new_args.append(arg)
+    return new_args
 
 
 def expand_as_command_line(command_string):
-  """Expand a string as if it was entered at the command line.
+    """Expand a string as if it was entered at the command line.
 
   Mimics the shell expansion of '~', file globbing, and quotation marks.
   For example, 'picasa post -a "My album" ~/photos/*.png' will return
@@ -256,62 +254,60 @@ def expand_as_command_line(command_string):
     was entered on the command line.
 
   """
-  if not command_string:
-    return []
-  # Sub in the home path.
-  home_path = os.path.expanduser('~/')
-  # We may get a tilde that needs expansion in the middle of the string...
-  # (Replace with the space to make sure we don't screw up /really/~/weird/path
-  command_string = command_string.replace(' ~/', ' ' + home_path)
-  # Or, if we're given options.src to expand, it could be the first few
-  # characters.
-  if command_string.startswith('~/'):
-    command_string = home_path + command_string[2:]
-  token_list = command_string.split()
-  args_list = []
-  while token_list:
-    tmp = token_list.pop(0)
-    start_of_quote = tmp[0] == '"' or tmp[0] == "'"
-    start_of_dict = tmp[0] == '{'
-    start_of_list = tmp[0] == '['
-    # A test to see if the end of a quoted argument has been reached
-    end_quote = lambda s: s[-1] == s[0] and len(s) > 1 and s[-2] != '\\'
-    end_dict = lambda s: s[-1] == '}' and len(s) > 1 and s[-2] != '\\'
-    end_list = lambda s: s[-1] == ']' and len(s) > 1 and s[-2] != '\\'
-    # Don't need to worry about nesting because of natural syntax:
-    # ["foo", ["bar"], "baz"] -> stupid to have '["bar"] ,'
-    while (start_of_quote and not end_quote(tmp)) or (start_of_dict 
-      and not end_dict(tmp)) or (start_of_list and not end_list(tmp)):
-      if token_list:
-        tmp += ' ' + token_list.pop(0)
-      else:
+    if not command_string:
+      return []
+    # Sub in the home path.
+    home_path = os.path.expanduser('~/')
+      # We may get a tilde that needs expansion in the middle of the string...
+      # (Replace with the space to make sure we don't screw up /really/~/weird/path
+    command_string = command_string.replace(' ~/', f' {home_path}')
+    # Or, if we're given options.src to expand, it could be the first few
+    # characters.
+    if command_string.startswith('~/'):
+      command_string = home_path + command_string[2:]
+    token_list = command_string.split()
+    args_list = []
+    while token_list:
+        tmp = token_list.pop(0)
+        start_of_quote = tmp[0] in ['"', "'"]
+        start_of_dict = tmp[0] == '{'
+        start_of_list = tmp[0] == '['
+        # A test to see if the end of a quoted argument has been reached
+        end_quote = lambda s: s[-1] == s[0] and len(s) > 1 and s[-2] != '\\'
+        end_dict = lambda s: s[-1] == '}' and len(s) > 1 and s[-2] != '\\'
+        end_list = lambda s: s[-1] == ']' and len(s) > 1 and s[-2] != '\\'
+            # Don't need to worry about nesting because of natural syntax:
+            # ["foo", ["bar"], "baz"] -> stupid to have '["bar"] ,'
+        while   (start_of_quote and not end_quote(tmp)) or (start_of_dict 
+        and not end_dict(tmp)) or (start_of_list and not end_list(tmp)):
+            if token_list:
+                tmp += f' {token_list.pop(0)}'
+            elif start_of_quote:
+                raise Error('Encountered end of string without finding matching "')
+            elif start_of_dict:
+              raise Error('Encountered end of string without finding matching }')
+            else:
+                raise Error('Encountered end of string without finding matching ]')
         if start_of_quote:
-          raise Error('Encountered end of string without finding matching "')
-        elif start_of_dict:
-          raise Error('Encountered end of string without finding matching }')
+            # Add the resulting arg, stripping the " off
+            args_list.append(tmp[1:-1])
         else:
-          raise Error('Encountered end of string without finding matching ]')
-    if start_of_quote:
-      # Add the resulting arg, stripping the " off
-      args_list.append(tmp[1:-1])
-    else:
-      # Grab all the tokens in a row that end with unescaped \
-      while tmp[-1] == '\\' and len(tmp) > 1 and tmp[-2] != '\\':
-        if token_list:
-          tmp = tmp[:-1] + ' ' + token_list.pop(0)
-        else:
-          raise Error('Encountered end of string ending in \\')
+                  # Grab all the tokens in a row that end with unescaped \
+            while tmp[-1] == '\\' and len(tmp) > 1 and tmp[-2] != '\\':
+                if token_list:
+                    tmp = f'{tmp[:-1]} {token_list.pop(0)}'
+                else:
+                    raise Error('Encountered end of string ending in \\')
 
-      expanded_args = glob.glob(tmp)
-      if expanded_args:
-        args_list.extend(expanded_args)
-      else:
-        args_list.append(tmp)
-  return args_list
+            if expanded_args := glob.glob(tmp):
+                args_list.extend(expanded_args)
+            else:
+                args_list.append(tmp)
+    return args_list
 
 
 def fill_out_options(args, service_header, task, options, config):
-  """Fill out required options via config file and command line prompts.
+    """Fill out required options via config file and command line prompts.
 
   If there are any required fields missing for a task, fill them in.
   This is attempted by checking the following sources, in order:
@@ -336,49 +332,44 @@ def fill_out_options(args, service_header, task, options, config):
     Nothing, though options may be modified to hold the required fields.
 
   """
-  def _retrieve_value(attr, service_header):
-    """Retrieve value from config file or user prompt."""
-    value = config.lazy_get(service_header, attr)
-    if value:
-      return value
-    else:
-      return raw_input('Please specify ' + attr + ': ')
+    def _retrieve_value(attr, service_header):
+        """Retrieve value from config file or user prompt."""
+        value = config.lazy_get(service_header, attr)
+        return value if value else raw_input(f'Please specify {attr}: ')
 
-  if options.user is None:
-    options.user = _retrieve_value('user', service_header)
-  if options.hostid is None:
-    options.hostid = _retrieve_value('hostid', service_header)
-  missing_reqs = task.get_outstanding_requirements(options)
-  LOG.debug('missing_reqs: ' + str(missing_reqs))
+    if options.user is None:
+      options.user = _retrieve_value('user', service_header)
+    if options.hostid is None:
+      options.hostid = _retrieve_value('hostid', service_header)
+    missing_reqs = task.get_outstanding_requirements(options)
+    LOG.debug(f'missing_reqs: {str(missing_reqs)}')
 
-  for attr in missing_reqs:
-    value = config.lazy_get(service_header, attr)
-    if not value:
-      if args:
-        value = args.pop(0)
-      else:
-        value = raw_input('Please specify ' + attr + ': ')
-    setattr(options, attr, value)
+    for attr in missing_reqs:
+        value = config.lazy_get(service_header, attr)
+        if not value:
+            value = args.pop(0) if args else raw_input(f'Please specify {attr}: ')
+        setattr(options, attr, value)
 
-  # Expand those options that might be a filename in disguise.
-  max_file_size = 500000    # Value picked arbitrarily - no idea what the max
-                            # size in bytes of a summary is.
-  if options.summary and os.path.exists(os.path.expanduser(options.summary)):
-    with open(options.summary, 'r') as summary_file:
-      options.summary = summary_file.read(max_file_size)
-  if options.devkey and os.path.exists(os.path.expanduser(options.devkey)):
-    with open(options.devkey, 'r') as key_file:
-      options.devkey = key_file.read(max_file_size).strip()
+    # Expand those options that might be a filename in disguise.
+    max_file_size = 500000    # Value picked arbitrarily - no idea what the max
+    if options.summary and os.path.exists(os.path.expanduser(options.summary)):
+      with open(options.summary, 'r') as summary_file:
+        options.summary = summary_file.read(max_file_size)
+    if options.devkey and os.path.exists(os.path.expanduser(options.devkey)):
+      with open(options.devkey, 'r') as key_file:
+        options.devkey = key_file.read(max_file_size).strip()
 
 
 def get_task_help(service, tasks):
-  help = 'Available tasks for service ' + service + \
-         ': ' + str(tasks.keys())[1:-1] + '\n'
-  for task_name in tasks.keys():
-    help += ' ' + task_name + ': ' + tasks[task_name].description + '\n'
-    help += '  ' + tasks[task_name].usage + '\n\n'
+    help = (
+        f'Available tasks for service {service}: {str(tasks.keys())[1:-1]}'
+        + '\n'
+    )
+    for task_name in tasks.keys():
+        help += f' {task_name}: {tasks[task_name].description}' + '\n'
+        help += f'  {tasks[task_name].usage}' + '\n\n'
 
-  return help
+    return help
 
 
 def import_at_runtime(module):
@@ -785,194 +776,194 @@ def run_once(options, args):
 
 
 def setup_logger(options):
-  """Setup the global (root, basic) configuration for logging."""
-  msg_format = '%(message)s'
-  if options.debug:
-    level = logging.DEBUG
-    msg_format = '%(levelname)s:%(name)s:%(message)s'
-  elif options.verbose:
-    level = logging.DEBUG
-  elif options.quiet:
-    level = logging.ERROR
-  else:
-    level = logging.INFO
-  # basicConfig does nothing if it's been called before
-  # (e.g. in run_interactive loop)
-  logging.basicConfig(level=level, format=msg_format)
-  # Redundant for single-runs, but necessary for run_interactive.
-  LOG.setLevel(level)
-  # XXX: Inappropriate location (style-wise).
-  if options.debug or options.verbose:
-    import gdata
-    LOG.debug('Gdata will be imported from ' + gdata.__file__)
+    """Setup the global (root, basic) configuration for logging."""
+    msg_format = '%(message)s'
+    if options.debug:
+      level = logging.DEBUG
+      msg_format = '%(levelname)s:%(name)s:%(message)s'
+    elif options.verbose:
+      level = logging.DEBUG
+    elif options.quiet:
+      level = logging.ERROR
+    else:
+      level = logging.INFO
+    # basicConfig does nothing if it's been called before
+    # (e.g. in run_interactive loop)
+    logging.basicConfig(level=level, format=msg_format)
+    # Redundant for single-runs, but necessary for run_interactive.
+    LOG.setLevel(level)
+      # XXX: Inappropriate location (style-wise).
+    if options.debug or options.verbose:
+        import gdata
+        LOG.debug(f'Gdata will be imported from {gdata.__file__}')
 
 
 def setup_parser(loading_usage):
-  """Set up the parser.
+    """Set up the parser.
 
   Returns:
     optparse.OptionParser with options configured.
 
   """
-  available_services = '[' + '|'.join(AVAILABLE_SERVICES) + ']'
-  # NOTE: Usage string formatted to work with help2man.  After changing it,
-  # please run:
-  # 'help2man -N -n "command-line access to (some) Google services" \
-  #  -i ../man/examples.help2man  ./google > google.1'
-  # then 'man ./google.1' and make sure the generated manpage still looks
-  # reasonable.  Then save it to man/google.1
-  usage = ('Usage: ' + sys.argv[0] + ' ' + available_services +
-           ' TASK [options]\n'
-           '\n'
-           'This program provides command-line access to\n'
-           '(some) google services via their gdata APIs.\n'
-           'Called without a service name, it starts an interactive session.\n'
-           '\n'
-           'NOTE: GoogleCL will interpret arguments as required options in the\n'
-           'order they appear in the descriptions below, excluding options\n'
-           'set in the configuration file and non-primary terms in '
-           'parenthesized\n'
-           'OR groups. For example:\n'
-           '\n'
-           '\t$ google picasa get my_album .\n'
-           'is interpreted as "google picasa get --title=my_album --dest=.\n'
-           '\n'
-           '\t$ google contacts list john\n'
-           'is interpreted as "$ google contacts list '
-           '--fields=<config file def> --title=john --delimiter=,"\n'
-           '(only true if you have not removed the default definition in the '
-           'config file!)\n'
-           '\n'
-           '\t$ google docs get my_doc .\n'
-           'is interpreted as "$ google docs get --title=my_doc --dest=.\n'
-           '(folder is NOT set, since the title option is satisfied first.)\n\n'
-           )
+    available_services = '[' + '|'.join(AVAILABLE_SERVICES) + ']'
+      # NOTE: Usage string formatted to work with help2man.  After changing it,
+      # please run:
+      # 'help2man -N -n "command-line access to (some) Google services" \
+      #  -i ../man/examples.help2man  ./google > google.1'
+      # then 'man ./google.1' and make sure the generated manpage still looks
+      # reasonable.  Then save it to man/google.1
+    usage = (
+        f'Usage: {sys.argv[0]} {available_services}' + ' TASK [options]\n'
+        '\n'
+        'This program provides command-line access to\n'
+        '(some) google services via their gdata APIs.\n'
+        'Called without a service name, it starts an interactive session.\n'
+        '\n'
+        'NOTE: GoogleCL will interpret arguments as required options in the\n'
+        'order they appear in the descriptions below, excluding options\n'
+        'set in the configuration file and non-primary terms in '
+        'parenthesized\n'
+        'OR groups. For example:\n'
+        '\n'
+        '\t$ google picasa get my_album .\n'
+        'is interpreted as "google picasa get --title=my_album --dest=.\n'
+        '\n'
+        '\t$ google contacts list john\n'
+        'is interpreted as "$ google contacts list '
+        '--fields=<config file def> --title=john --delimiter=,"\n'
+        '(only true if you have not removed the default definition in the '
+        'config file!)\n'
+        '\n'
+        '\t$ google docs get my_doc .\n'
+        'is interpreted as "$ google docs get --title=my_doc --dest=.\n'
+        '(folder is NOT set, since the title option is satisfied first.)\n\n'
+    )
 
-  if loading_usage:
-    for service in AVAILABLE_SERVICES:
-      if service == 'help':
-        continue
-      service_package = import_at_runtime('googlecl.' + service)
-      usage += get_task_help(service, service_package.TASKS) + '\n'
+    if loading_usage:
+        for service in AVAILABLE_SERVICES:
+            if service == 'help':
+              continue
+            service_package = import_at_runtime(f'googlecl.{service}')
+            usage += get_task_help(service, service_package.TASKS) + '\n'
 
-  parser = NonFatalOptionParser(usage=usage, version=sys.argv[0] + VERSION)
-  parser.add_option('--access', dest='access',
-                    help='Specify access/visibility level of an upload')
-  parser.add_option('--blog', dest='blog',
-                    help='Blogger only - specify a blog other than your' +
-                    ' primary.')
-  parser.add_option('--cal', dest='cal',
-                    help='Calendar only - specify a calendar other than your' +
-                    ' primary.')
-  parser.add_option('-c', '--category', dest='category',
-                    help='YouTube only - specify video categories' +
-                    ' as a comma-separated list, e.g. "Film, Travel"')
-  parser.add_option('--commission', dest='commission',
-                    help=("Finance only - specify commission for transaction"))
-  parser.add_option('--config', dest='config',
-                    help='Specify location of config file.')
-  parser.add_option('--currency', dest='currency',
-                    help=("Finance only - specify currency for portfolio"))
-  parser.add_option('--devtags', dest='devtags',
-                    help='YouTube only - specify developer tags' +
-                    ' as a comma-separated list.')
-  parser.add_option('--devkey', dest='devkey',
-                    help='YouTube only - specify a developer key')
-  parser.add_option('-d', '--date', dest='date',
-                    help=('Calendar only - date of the event to add/look for. '
-                          'Can also specify a range with a comma.\n'
-                          'Picasa only - sets the date of the album\n'
-                          'Finance only - transaction creation date'))
-  parser.add_option('--debug', dest='debug',
-                    action='store_true',
-                    help=('Enable all debugging output, including HTTP data'))
-  parser.add_option('--delimiter', dest='delimiter', default=',',
-                    help='Specify a delimiter for the output of the list task.')
-  parser.add_option('--dest', dest='dest',
-                    help=('Destination. Typically, where to save data being'
-                          ' downloaded.'))
-  parser.add_option('--domain', dest='domain', help='Sites only - specify domain')
-  parser.add_option('--draft', dest='access',
-                    action='store_const', const='draft',
-                    help=('Blogger only - post as a draft. Shorthand for '
-                          '--access=draft'))
-  parser.add_option('--editor', dest='editor',
-                    help='Docs only - editor to use on a file.')
-  parser.add_option('--fields', dest='fields',
-                    help='Fields to list with list task.')
-  parser.add_option('-f', '--folder', dest='folder',
-                    help='Sites: sites page (folder) to upload under. Docs - specify folder(s) to upload to '+
-                    '/ search in.')
-  parser.add_option('--force-auth', dest='force_auth',
-                    action='store_true',
-                    help='Force validation step for re-used access tokens' +
-                         ' (Overrides --skip-auth).')
-  parser.add_option('--format', dest='format',
-                    help='Sites - sites page type to upload as. Docs - format to download documents as.')
-  parser.add_option('--gid', dest='gid',
-                    help=("Docs only - Spreadsheet Grid ID. Corresponds to a specific worksheet. Can be found in the browser URL when "+
-                          "viewing a worksheet. Note that GID's do not correspond to indexes, which are not available as worksheet identifiers."))
-  parser.add_option('--hostid', dest='hostid',
-                    help='Label the machine being used.')
-  parser.add_option('--max_results', dest='max_results',
-                    help='Sites: max results to return for list. Overrides config.')
-  parser.add_option('-n', '--title', dest='title',
-                    help='Title of the item')
-  parser.add_option('--no-convert', dest='convert',
-                    action='store_false', default=True,
-                    help='Google Apps Premier only - do not convert the file' +
-                    ' on upload. (Else converts to native Google Docs format)')
-  parser.add_option('--notes', dest='notes',
-                    help=("Finance only - specify notes for transaction"))
-  parser.add_option('-o', '--owner', dest='owner',
-                    help=('Username or ID of the owner of the resource. ' +
-                          'For example,' +
-                          " 'picasa list-albums -o bob' to list bob's albums"))
-  parser.add_option('--photo', dest='photo',
-                    help='Picasa only - specify title or name of photo(s)')
-  parser.add_option('--price', dest='price',
-                    help=("Finance only - specify price for transaction"))
-  parser.add_option('-q', '--query', dest='query',
-                    help=('Sites, Picasa: full text search with this string.'
-                          + ' Picasa: searches on titles, captions, and tags.'))
-  parser.add_option('--quiet', dest='quiet',
-                    action='store_true',
-                    help='Print only prompts and error messages')
-  parser.add_option('--reminder', dest='reminder',
-                    help=("Calendar only - specify time for added event's " +
-                          'reminder, e.g. "10m", "3h", "1d"'))
-  parser.add_option('--shares', dest='shares',
-                    help=("Finance only - specify amount of shares " +
-                          "for transaction"))
-  parser.add_option('--site', dest='site', help='Sites only - specify site')
-  parser.add_option('--skip-auth', dest='skip_auth',
-                    action='store_true',
-                    help='Skip validation step for re-used access tokens.')
-  parser.add_option('--src', dest='src',
-                    help='Source. Typically files to upload.')
-  parser.add_option('-s', '--summary', dest='summary',
-                    help=('Description of the upload, ' +
-                          'or file containing the description.'))
-  parser.add_option('-t',  '--tags', dest='tags',
-                    help='Tags for item, e.g. "Sunsets, Earth Day"')
-  parser.add_option('--ticker', dest='ticker',
-                    help=("Finance only - specify ticker"))
-  parser.add_option('--ttype', dest='ttype',
-                    help=("Finance only - specify transaction type, " +
-                          'e.g. "Bye", "Sell", "Buy to Cover", "Sell Short"'))
-  parser.add_option('--txnid', dest='txnid',
-                    help=("Finance only - specify transaction id"))
-  parser.add_option('-u', '--user', dest='user',
-                    help=('Username to log in with for the service. '+  
-                          'If not provided full email address (e.g. "foo"), than it is assumed to be in gmail.com domain (e.g. "foo@gmail.com"). ' +
-                          'If you want to use another domain, provide full email address like "foo@bar.com"'))
-  parser.add_option('-v', '--verbose', dest='verbose',
-                    action='store_true',
-                    help='Print all messages.')
-  parser.add_option('--yes', dest='prompt',
-                    action='store_false', default=True,
-                    help='Answer "yes" to all prompts')
-  return parser
+    parser = NonFatalOptionParser(usage=usage, version=sys.argv[0] + VERSION)
+    parser.add_option('--access', dest='access',
+                      help='Specify access/visibility level of an upload')
+    parser.add_option('--blog', dest='blog',
+                      help='Blogger only - specify a blog other than your' +
+                      ' primary.')
+    parser.add_option('--cal', dest='cal',
+                      help='Calendar only - specify a calendar other than your' +
+                      ' primary.')
+    parser.add_option('-c', '--category', dest='category',
+                      help='YouTube only - specify video categories' +
+                      ' as a comma-separated list, e.g. "Film, Travel"')
+    parser.add_option('--commission', dest='commission',
+                      help=("Finance only - specify commission for transaction"))
+    parser.add_option('--config', dest='config',
+                      help='Specify location of config file.')
+    parser.add_option('--currency', dest='currency',
+                      help=("Finance only - specify currency for portfolio"))
+    parser.add_option('--devtags', dest='devtags',
+                      help='YouTube only - specify developer tags' +
+                      ' as a comma-separated list.')
+    parser.add_option('--devkey', dest='devkey',
+                      help='YouTube only - specify a developer key')
+    parser.add_option('-d', '--date', dest='date',
+                      help=('Calendar only - date of the event to add/look for. '
+                            'Can also specify a range with a comma.\n'
+                            'Picasa only - sets the date of the album\n'
+                            'Finance only - transaction creation date'))
+    parser.add_option('--debug', dest='debug',
+                      action='store_true',
+                      help=('Enable all debugging output, including HTTP data'))
+    parser.add_option('--delimiter', dest='delimiter', default=',',
+                      help='Specify a delimiter for the output of the list task.')
+    parser.add_option('--dest', dest='dest',
+                      help=('Destination. Typically, where to save data being'
+                            ' downloaded.'))
+    parser.add_option('--domain', dest='domain', help='Sites only - specify domain')
+    parser.add_option('--draft', dest='access',
+                      action='store_const', const='draft',
+                      help=('Blogger only - post as a draft. Shorthand for '
+                            '--access=draft'))
+    parser.add_option('--editor', dest='editor',
+                      help='Docs only - editor to use on a file.')
+    parser.add_option('--fields', dest='fields',
+                      help='Fields to list with list task.')
+    parser.add_option('-f', '--folder', dest='folder',
+                      help='Sites: sites page (folder) to upload under. Docs - specify folder(s) to upload to '+
+                      '/ search in.')
+    parser.add_option('--force-auth', dest='force_auth',
+                      action='store_true',
+                      help='Force validation step for re-used access tokens' +
+                           ' (Overrides --skip-auth).')
+    parser.add_option('--format', dest='format',
+                      help='Sites - sites page type to upload as. Docs - format to download documents as.')
+    parser.add_option('--gid', dest='gid',
+                      help=("Docs only - Spreadsheet Grid ID. Corresponds to a specific worksheet. Can be found in the browser URL when "+
+                            "viewing a worksheet. Note that GID's do not correspond to indexes, which are not available as worksheet identifiers."))
+    parser.add_option('--hostid', dest='hostid',
+                      help='Label the machine being used.')
+    parser.add_option('--max_results', dest='max_results',
+                      help='Sites: max results to return for list. Overrides config.')
+    parser.add_option('-n', '--title', dest='title',
+                      help='Title of the item')
+    parser.add_option('--no-convert', dest='convert',
+                      action='store_false', default=True,
+                      help='Google Apps Premier only - do not convert the file' +
+                      ' on upload. (Else converts to native Google Docs format)')
+    parser.add_option('--notes', dest='notes',
+                      help=("Finance only - specify notes for transaction"))
+    parser.add_option('-o', '--owner', dest='owner',
+                      help=('Username or ID of the owner of the resource. ' +
+                            'For example,' +
+                            " 'picasa list-albums -o bob' to list bob's albums"))
+    parser.add_option('--photo', dest='photo',
+                      help='Picasa only - specify title or name of photo(s)')
+    parser.add_option('--price', dest='price',
+                      help=("Finance only - specify price for transaction"))
+    parser.add_option('-q', '--query', dest='query',
+                      help=('Sites, Picasa: full text search with this string.'
+                            + ' Picasa: searches on titles, captions, and tags.'))
+    parser.add_option('--quiet', dest='quiet',
+                      action='store_true',
+                      help='Print only prompts and error messages')
+    parser.add_option('--reminder', dest='reminder',
+                      help=("Calendar only - specify time for added event's " +
+                            'reminder, e.g. "10m", "3h", "1d"'))
+    parser.add_option('--shares', dest='shares',
+                      help=("Finance only - specify amount of shares " +
+                            "for transaction"))
+    parser.add_option('--site', dest='site', help='Sites only - specify site')
+    parser.add_option('--skip-auth', dest='skip_auth',
+                      action='store_true',
+                      help='Skip validation step for re-used access tokens.')
+    parser.add_option('--src', dest='src',
+                      help='Source. Typically files to upload.')
+    parser.add_option('-s', '--summary', dest='summary',
+                      help=('Description of the upload, ' +
+                            'or file containing the description.'))
+    parser.add_option('-t',  '--tags', dest='tags',
+                      help='Tags for item, e.g. "Sunsets, Earth Day"')
+    parser.add_option('--ticker', dest='ticker',
+                      help=("Finance only - specify ticker"))
+    parser.add_option('--ttype', dest='ttype',
+                      help=("Finance only - specify transaction type, " +
+                            'e.g. "Bye", "Sell", "Buy to Cover", "Sell Short"'))
+    parser.add_option('--txnid', dest='txnid',
+                      help=("Finance only - specify transaction id"))
+    parser.add_option('-u', '--user', dest='user',
+                      help=('Username to log in with for the service. '+  
+                            'If not provided full email address (e.g. "foo"), than it is assumed to be in gmail.com domain (e.g. "foo@gmail.com"). ' +
+                            'If you want to use another domain, provide full email address like "foo@bar.com"'))
+    parser.add_option('-v', '--verbose', dest='verbose',
+                      action='store_true',
+                      help='Print all messages.')
+    parser.add_option('--yes', dest='prompt',
+                      action='store_false', default=True,
+                      help='Answer "yes" to all prompts')
+    return parser
 
 def main():
   """Entry point for GoogleCL script."""

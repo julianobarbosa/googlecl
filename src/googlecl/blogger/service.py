@@ -82,15 +82,13 @@ class BloggerServiceCL(gdata.blogger.service.BloggerService,
       Blog ID (blog_entry.GetSelfLink().href.split('/')[-1]) if a blog is
       found matching the user and blog_title. None otherwise.
     """
-    blog_entry = self.GetSingleEntry('/feeds/' + user_id + '/blogs', blog_title)
-    if blog_entry:
+    if blog_entry := self.GetSingleEntry(f'/feeds/{user_id}/blogs', blog_title):
       return blog_entry.GetSelfLink().href.split('/')[-1]
+    if blog_title is None:
+      LOG.error('No blogs found!')
     else:
-      if blog_title is not None:
-        LOG.error('Did not find a blog with title matching %s', blog_title)
-      else:
-        LOG.error('No blogs found!')
-      return None
+      LOG.error('Did not find a blog with title matching %s', blog_title)
+    return None
 
   def is_token_valid(self, test_uri='/feeds/default/blogs'):
     """Check that the token being used is valid."""
@@ -111,9 +109,8 @@ class BloggerServiceCL(gdata.blogger.service.BloggerService,
     Returns:
       List of posts that match parameters, or [] if none do.
     """
-    blog_id = self._get_blog_id(blog_title, user_id)
-    if blog_id:
-      uri = '/feeds/' + blog_id + '/posts/default'
+    if blog_id := self._get_blog_id(blog_title, user_id):
+      uri = f'/feeds/{blog_id}/posts/default'
       return self.GetEntries(uri, post_titles)
     else:
       return []
@@ -139,8 +136,8 @@ class BloggerServiceCL(gdata.blogger.service.BloggerService,
         # 1) Are of a different scheme than the one we're looking at, or
         # 2) Are of the same scheme, but the term is in the 'remove' set
         post.category = [c for c in post.category \
-                          if c.scheme != scheme or \
-                          (c.scheme == scheme and c.term not in remove_set)]
+                            if c.scheme != scheme or \
+                            (c.scheme == scheme and c.term not in remove_set)]
 
       if replace_tags:
         # Remove categories that match the scheme we are updating.
@@ -148,8 +145,7 @@ class BloggerServiceCL(gdata.blogger.service.BloggerService,
       if add_set:
         new_tags = [atom.Category(term=tag, scheme=scheme) for tag in add_set]
         post.category.extend(new_tags)
-      updated_post = self.UpdatePost(post)
-      if updated_post:
+      if updated_post := self.UpdatePost(post):
         successes.append(updated_post)
     return successes
 

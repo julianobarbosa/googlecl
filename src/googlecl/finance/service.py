@@ -120,18 +120,17 @@ class FinanceServiceCL(FinanceService, BaseServiceCL):
     query.returns = returns
     query.positions = positions
 
-    uri = "/finance/feeds/default/portfolios/" + query.ToUri()
+    uri = f"/finance/feeds/default/portfolios/{query.ToUri()}"
 
     if multiple:
       return self.GetEntries(uri, titles=title,
                              converter=PortfolioFeedFromString)
+    if entry := self.GetSingleEntry(uri,
+                                    title=title,
+                                    converter=PortfolioFeedFromString):
+      return [entry]
     else:
-      entry = self.GetSingleEntry(uri, title=title,
-                                  converter=PortfolioFeedFromString)
-      if entry:
-        return [entry]
-      else:
-        return []
+      return []
 
   def get_portfolio(self, title, returns=False, positions=False):
     """Get portfolio by title.
@@ -143,13 +142,13 @@ class FinanceServiceCL(FinanceService, BaseServiceCL):
     Returns: portfolio feed object or None if not found.
     """
 
-    entries = self.get_portfolio_entries(title=title, returns=returns,
-                                         positions=positions, multiple=False)
-    if entries:
+    if entries := self.get_portfolio_entries(title=title,
+                                             returns=returns,
+                                             positions=positions,
+                                             multiple=False):
       return entries[0]
-    else:
-      LOG.info('Portfolio "%s" not found' % title)
-      return None
+    LOG.info(f'Portfolio "{title}" not found')
+    return None
 
   def get_positions(self, portfolio_title, ticker_id=None,
                     include_returns=False):
@@ -187,14 +186,14 @@ class FinanceServiceCL(FinanceService, BaseServiceCL):
     if not pfl:
       LOG.debug('No portfolio to get transactions from!')
       return []
-    if transaction_id:
-      transactions = [self.GetTransaction(portfolio_id=pfl.portfolio_id,
-                                            ticker_id=ticker_id,
-                                            transaction_id=transaction_id)]
-    else:
-      transactions = self.GetTransactionFeed(portfolio_id=pfl.portfolio_id,
-                                             ticker_id=ticker_id).entry
-    return transactions
+    return ([
+        self.GetTransaction(
+            portfolio_id=pfl.portfolio_id,
+            ticker_id=ticker_id,
+            transaction_id=transaction_id,
+        )
+    ] if transaction_id else self.GetTransactionFeed(
+        portfolio_id=pfl.portfolio_id, ticker_id=ticker_id).entry)
 
   def create_transaction(self, pfl, ttype, ticker, shares=None, price=None,
                          currency=None, commission=None, date='', notes=None):

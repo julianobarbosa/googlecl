@@ -186,19 +186,18 @@ def get_datetimes(cal_entry):
   """
   if cal_entry.recurrence:
     return parse_recurrence(cal_entry.recurrence.text)
-  else:
-    freq = None
-    when = cal_entry.when[0]
-    try:
-      # Trim the string data from "when" to only include down to seconds
-      start_time_data = time.strptime(when.start_time[:19],
-                                      '%Y-%m-%dT%H:%M:%S')
-      end_time_data = time.strptime(when.end_time[:19],
+  freq = None
+  when = cal_entry.when[0]
+  try:
+    # Trim the string data from "when" to only include down to seconds
+    start_time_data = time.strptime(when.start_time[:19],
                                     '%Y-%m-%dT%H:%M:%S')
-    except ValueError:
-      # Try to handle date format for all-day events
-      start_time_data = time.strptime(when.start_time, '%Y-%m-%d')
-      end_time_data = time.strptime(when.end_time, '%Y-%m-%d')
+    end_time_data = time.strptime(when.end_time[:19],
+                                  '%Y-%m-%dT%H:%M:%S')
+  except ValueError:
+    # Try to handle date format for all-day events
+    start_time_data = time.strptime(when.start_time, '%Y-%m-%d')
+    end_time_data = time.strptime(when.end_time, '%Y-%m-%d')
   return (start_time_data, end_time_data, freq)
 
 
@@ -253,7 +252,7 @@ class CalendarEntryToStringWrapper(googlecl.base.BaseEntryToStringWrapper):
                                                       'date_print_format')
     start_text = time.strftime(print_format, start_date)
     end_text = time.strftime(print_format, end_date)
-    value = start_text + ' - ' + end_text
+    value = f'{start_text} - {end_text}'
     if freq:
       if freq.has_key('BYDAY'):
         value += ' (' + freq['BYDAY'].lower() + ')'
@@ -317,7 +316,7 @@ def _run_list_today(client, options, args):
 def _run_add(client, options, args):
   cal_user_list = client.get_calendar_user_list(options.cal)
   if not cal_user_list:
-    LOG.error('No calendar matches "' + options.cal + '"')
+    LOG.error(f'No calendar matches "{options.cal}"')
     return
   reminder_in_minutes = convert_reminder_string(options.reminder)
   events_list = options.src + args
@@ -339,13 +338,13 @@ def _run_add(client, options, args):
                   entry.batch_status.code,
                   entry.batch_status.reason)
     for entry in results:
-      LOG.info('Event created: %s' % entry.GetHtmlLink().href)
+      LOG.info(f'Event created: {entry.GetHtmlLink().href}')
 
 
 def _run_delete(client, options, args):
   cal_user_list = client.get_calendar_user_list(options.cal)
   if not cal_user_list:
-    LOG.error('No calendar matches "' + options.cal + '"')
+    LOG.error(f'No calendar matches "{options.cal}"')
     return
   parser = DateRangeParser()
   date_range = parser.parse(options.date)
@@ -359,7 +358,7 @@ def _run_delete(client, options, args):
                                                     query=options.query,
                                                     expand_recurrence=True)
     if options.prompt:
-      LOG.info(safe_encode('For calendar ' + unicode(cal)))
+      LOG.info(safe_encode(f'For calendar {unicode(cal)}'))
     if single_events:
       client.DeleteEntryList(single_events, 'event', options.prompt)
     if recurring_events:

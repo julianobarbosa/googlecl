@@ -91,8 +91,9 @@ class BaseCL(object):
       service_name = self.service
     if (service_name != 'youtube' and
         (not self.cap_results and self.max_results < large_max_results)):
-      LOG.warning('You are requesting only ' + str(self.max_results) +
-                  ' results per query -- this may be slow')
+      LOG.warning(
+          f'You are requesting only {str(self.max_results)} results per query -- this may be slow'
+      )
 
   def delete_entry_list(self, entries, entry_type, prompt,
                         callback=None):
@@ -161,21 +162,19 @@ class BaseCL(object):
         parse_func = cgi.parse_qs
       param_dict = parse_func(result_body)
       email = param_dict['email'][0]
-    # This block copied (with some modification) from GDataService (2.0.10)
     elif server_response.status == 302:
-      if redirects_remaining > 0:
-        location = (server_response.getheader('Location') or
-                    server_response.getheader('location'))
-        if location is not None:
-          return BaseServiceCL.get_email(location,
-                                      redirects_remaining=redirects_remaining-1)
-        else:
-          raise self.request_error, {'status': server_response.status,
-                'reason': '302 received without Location header',
-                'body': result_body}
-      else:
+      if redirects_remaining <= 0:
         raise self.request_error, {'status': server_response.status,
               'reason': 'Redirect received, but redirects_remaining <= 0',
+              'body': result_body}
+      location = (server_response.getheader('Location') or
+                  server_response.getheader('location'))
+      if location is not None:
+        return BaseServiceCL.get_email(location,
+                                    redirects_remaining=redirects_remaining-1)
+      else:
+        raise self.request_error, {'status': server_response.status,
+              'reason': '302 received without Location header',
               'body': result_body}
     else:
       raise self.request_error, {'status': server_response.status,
@@ -405,12 +404,9 @@ def set_max_results(uri, max):
   """Set max-results parameter if it is not set already."""
   max_str = str(max)
   if uri.find('?') == -1:
-    return uri + '?max-results=' + max_str
+    return f'{uri}?max-results={max_str}'
   else:
-    if uri.find('max-results') == -1:
-      return uri + '&max-results=' + max_str
-    else:
-      return uri
+    return f'{uri}&max-results={max_str}' if uri.find('max-results') == -1 else uri
 
 
 # The use of login_required has been deprecated - all tasks now require
@@ -456,7 +452,7 @@ class Task(object):
     # Then join the resulting list with ' AND '.
     if self.required:
       req_str = ' AND '.join(['('+' OR '.join(a)+')' if isinstance(a, list) \
-                              else a for a in self.required])
+                                else a for a in self.required])
     else:
       req_str = 'none'
     if self.optional:
@@ -464,8 +460,8 @@ class Task(object):
     else:
       opt_str = ''
     if args_desc:
-      args_desc = ' Arguments: ' + args_desc
-    self.usage = 'Requires: ' + req_str + opt_str + args_desc
+      args_desc = f' Arguments: {args_desc}'
+    self.usage = f'Requires: {req_str}{opt_str}{args_desc}'
 
   def get_outstanding_requirements(self, options):
     """Return a list of required options that are missing.
@@ -483,9 +479,11 @@ class Task(object):
       A subset of self.required containing only strings representing unmet
       requirements.
     """
-    missing_options_set = set(attr for attr in dir(options)
-                              if not attr.startswith('_') and
-                              getattr(options, attr) is None)
+    missing_options_set = {
+        attr
+        for attr in dir(options)
+        if not attr.startswith('_') and getattr(options, attr) is None
+    }
     missing_requirements = []
     for requirement in self.required:
       if isinstance(requirement, list):
@@ -504,9 +502,7 @@ class Task(object):
   def is_optional(self, attribute):
     """See if an attribute is optional"""
     # No list of lists in the optional fields
-    if attribute in self.optional:
-      return True
-    return False
+    return attribute in self.optional
 
   def _not_impl(self, *args):
     """Just use this as a place-holder for Task callbacks."""
@@ -565,11 +561,7 @@ class BaseEntryToStringWrapper(object):
     return self._url('site')
 
   def _url(self, subfield):
-    if not self.entry.GetHtmlLink():
-      href = ''
-    else:
-      href = self.entry.GetHtmlLink().href
-
+    href = '' if not self.entry.GetHtmlLink() else self.entry.GetHtmlLink().href
     if subfield == 'direct':
       return self.entry.content.src or href
     return href or self.entry.content.src
@@ -643,16 +635,14 @@ class BaseEntryToStringWrapper(object):
       return self.intra_property_delimiter.join([text_extractor(e)
                                                  for e in entry_list
                                                  if text_extractor(e)])
-    else:
-      separating_string = self.intra_property_delimiter + ' '
-      joined_string = ''
-      for entry in entry_list:
-        if self.label_delimiter is not None:
-          label = self._extract_label(entry, label_attr=label_attribute)
-          if label:
-            joined_string += label + self.label_delimiter
-        joined_string += text_extractor(entry) + separating_string
-      return joined_string.rstrip(separating_string)
+    separating_string = f'{self.intra_property_delimiter} '
+    joined_string = ''
+    for entry in entry_list:
+      if self.label_delimiter is not None:
+        if label := self._extract_label(entry, label_attr=label_attribute):
+          joined_string += label + self.label_delimiter
+      joined_string += text_extractor(entry) + separating_string
+    return joined_string.rstrip(separating_string)
 
 
 def compile_entry_string(wrapped_entry, attribute_list, delimiter,
@@ -730,11 +720,8 @@ def generate_tag_sets(tags):
   """
   tags = tags.replace(', ', ',')
   tagset = set(tags.split(','))
-  remove_set = set(tag[1:] for tag in tagset if tag[0] == '-')
-  if '-' in remove_set:
-    replace_tags = True
-  else:
-    replace_tags = False
+  remove_set = {tag[1:] for tag in tagset if tag[0] == '-'}
+  replace_tags = '-' in remove_set
   add_set = set()
   if len(remove_set) != len(tagset):
     # TODO: Can do this more cleanly with regular expressions?

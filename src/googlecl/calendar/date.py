@@ -59,7 +59,7 @@ class ParsingError(Error):
     self.token = token
 
   def __str__(self):
-    return 'Failed to parse "%s"' % self.token
+    return f'Failed to parse "{self.token}"'
 
 
 def datetime_today():
@@ -110,14 +110,8 @@ def parse_ambiguous_time(time_token):
 
   hour_text = ambiguous_time.group(1)
   minute_text = ambiguous_time.group(2)
-  if hour_text:
-    hour = int(hour_text)
-  else:
-    hour = 0
-  if minute_text:
-    minute = int(minute_text)
-  else:
-    minute = 0
+  hour = int(hour_text) if hour_text else 0
+  minute = int(minute_text) if minute_text else 0
   return hour, minute
 
 
@@ -192,7 +186,7 @@ class Date(object):
     if self.all_day:
       return self.local.strftime(basic_string_format)
     else:
-      return self.local.strftime(basic_string_format + ' %H:%M')
+      return self.local.strftime(f'{basic_string_format} %H:%M')
 
   def to_format(self, format_string):
     """Converts local data to specific format string."""
@@ -228,12 +222,7 @@ class Date(object):
 
   def to_when(self):
     """Returns datetime info formatted to Google Calendar "when" style."""
-    if self.all_day:
-      # All day events must leave off hour data.
-      return self.to_format('%Y-%m-%d')
-    else:
-      # Otherwise, treated like a query string.
-      return self.to_query()
+    return self.to_format('%Y-%m-%d') if self.all_day else self.to_query()
 
 
 class DateParser(object):
@@ -370,7 +359,7 @@ class DateParser(object):
     else:
       date, valid_format = self._extract_time(day_token, ACCEPTED_DAY_FORMATS)
       if not date:
-        LOG.debug('%s did not match any expected day formats' % day_token)
+        LOG.debug(f'{day_token} did not match any expected day formats')
         return None
       # If the year was not explicitly mentioned...
       # (strptime will set a default year of 1900)
@@ -399,7 +388,7 @@ class DateParser(object):
     if (hour or minute):
       # The ambiguous hours arranged in order, according to Google Calendar:
       # 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6
-      if 1 <= hour and hour <= 6:
+      if 1 <= hour <= 6:
         hour += 12
     else:
       tmp, _ = self._extract_time(time_token, ACCEPTED_TIME_FORMATS)
@@ -471,14 +460,12 @@ class DateRange(object):
       raise Error('Cannot convert range of dates without start and end points.')
     else:
       start = self.start
-    if not self.specified_as_range:
-      # If only a start date was given...
-      if self.start.all_day:
-        end = self.start + datetime.timedelta(hours=24)
-      else:
-        end = self.start + datetime.timedelta(hours=1)
-    else:
+    if self.specified_as_range:
       end = self.end
+    elif self.start.all_day:
+      end = self.start + datetime.timedelta(hours=24)
+    else:
+      end = self.start + datetime.timedelta(hours=1)
     return start.to_when(), end.to_when()
 
 
@@ -525,10 +512,7 @@ class DateRangeParser(object):
       start_date = self.date_parser.parse(start_text, shift_dates=shift_dates)
 
     if end_text:
-      if start_date:
-        base = start_date.local
-      else:
-        base = None
+      base = start_date.local if start_date else None
       end_date = self.date_parser.parse(end_text, base=base,
                                         shift_dates=shift_dates)
     elif not is_range:

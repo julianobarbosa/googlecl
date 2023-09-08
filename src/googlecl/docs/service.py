@@ -26,6 +26,7 @@ Download docs:
   docs get --folder "Some folder"
 
 """
+
 from __future__ import with_statement
 
 __author__ = 'tom.h.miller@gmail.com (Tom Miller)'
@@ -44,7 +45,7 @@ safe_encode = googlecl.safe_encode
 safe_decode = googlecl.safe_decode
 
 
-LOG = logging.getLogger(googlecl.docs.LOGGER_NAME + '.service')
+LOG = logging.getLogger(f'{googlecl.docs.LOGGER_NAME}.service')
 
 
 class DocsServiceCL(gdata.docs.service.DocsService,
@@ -191,20 +192,18 @@ class DocsServiceCL(gdata.docs.service.DocsService,
       None if there were no matches, or one entry matching the given title.
 
     """
-    if folder_entry_list:
-      if len(folder_entry_list) == 1:
-        return self.GetSingleEntry(folder_entry_list[0].content.src,
-                                   title,
-                                converter=gdata.docs.DocumentListFeedFromString)
-      else:
-        entries = self.get_doclist(title, folder_entry_list)
-        # Technically don't need the converter for this call
-        # because we have the entries.
-        return self.GetSingleEntry(entries, title)
-    else:
+    if not folder_entry_list:
       return self.GetSingleEntry(gdata.docs.service.DocumentQuery().ToUri(),
                                  title,
                                 converter=gdata.docs.DocumentListFeedFromString)
+    if len(folder_entry_list) == 1:
+      return self.GetSingleEntry(folder_entry_list[0].content.src,
+                                 title,
+                              converter=gdata.docs.DocumentListFeedFromString)
+    entries = self.get_doclist(title, folder_entry_list)
+    # Technically don't need the converter for this call
+    # because we have the entries.
+    return self.GetSingleEntry(entries, title)
 
   GetSingleDoc = get_single_doc
 
@@ -223,7 +222,7 @@ class DocsServiceCL(gdata.docs.service.DocsService,
                                                params={'showfolders': 'true'})
       folder_entries = self.GetEntries(query.ToUri(), title)
       if not folder_entries:
-        LOG.warning('No folder found that matches ' + title)
+        LOG.warning(f'No folder found that matches {title}')
       return folder_entries
     else:
       return None
@@ -335,5 +334,8 @@ def _make_kind_category(label):
   if label is None:
     return None
   documents_namespace = 'http://schemas.google.com/docs/2007'
-  return atom.Category(scheme=gdata.docs.service.DATA_KIND_SCHEME,
-                       term=documents_namespace + '#' + label, label=label)
+  return atom.Category(
+      scheme=gdata.docs.service.DATA_KIND_SCHEME,
+      term=f'{documents_namespace}#{label}',
+      label=label,
+  )

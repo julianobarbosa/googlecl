@@ -69,13 +69,7 @@ class PhotoEntryToStringWrapper(googlecl.base.BaseEntryToStringWrapper):
       ev_long_str = str(math.log(math.pow(N,2)/t, 2))
       dec_point = ev_long_str.find('.')
       # In the very rare case that there is no decimal point:
-      if dec_point == -1:
-        # Technically this can return something like 10000, violating
-        # our desired precision. But not likely.
-        return ev_long_str
-      else:
-        # return value to 1 decimal place
-        return ev_long_str[0:dec_point+2]
+      return ev_long_str if dec_point == -1 else ev_long_str[:dec_point+2]
     except Exception:
       # Don't really care what goes wrong -- result is the same.
       return None
@@ -159,9 +153,7 @@ class AlbumEntryToStringWrapper(googlecl.base.BaseEntryToStringWrapper):
     txt = self.entry.access.text
     if txt == 'protected':
       return 'private'
-    if txt == 'private':
-      return 'anyone with link'
-    return txt
+    return 'anyone with link' if txt == 'private' else txt
   visibility = access
 
   @property
@@ -199,7 +191,7 @@ def _run_create(client, options, args):
   if media_list:
     client.InsertMediaList(album, media_list=media_list,
                            tags=options.tags)
-  LOG.info('Created album: %s' % album.GetHtmlLink().href)
+  LOG.info(f'Created album: {album.GetHtmlLink().href}')
 
 
 def _run_delete(client, options, args):
@@ -211,13 +203,12 @@ def _run_delete(client, options, args):
     search_string = options.title
 
   titles_list = googlecl.build_titles_list(options.title, args)
-  entries = client.build_entry_list(titles=titles_list,
-                                    query=options.query,
-                                    photo_title=options.photo)
-  if not entries:
-    LOG.info('No %ss matching %s' % (entry_type, search_string))
-  else:
+  if entries := client.build_entry_list(titles=titles_list,
+                                        query=options.query,
+                                        photo_title=options.photo):
     client.DeleteEntryList(entries, entry_type, options.prompt)
+  else:
+    LOG.info(f'No {entry_type}s matching {search_string}')
 
 
 def _run_list(client, options, args):
@@ -248,14 +239,13 @@ def _run_post(client, options, args):
   media_list = options.src + args
   if not media_list:
     LOG.error('Must provide paths to media to post!')
-  album = client.GetSingleAlbum(user=options.owner or options.user,
-                                title=options.title)
-  if album:
+  if album := client.GetSingleAlbum(user=options.owner or options.user,
+                                    title=options.title):
     client.InsertMediaList(album, media_list, tags=options.tags,
                            user=options.owner or options.user,
                            photo_name=options.photo, caption=options.summary)
   else:
-    LOG.error('No albums found that match ' + options.title)
+    LOG.error(f'No albums found that match {options.title}')
 
 
 def _run_get(client, options, args):
@@ -273,12 +263,13 @@ def _run_get(client, options, args):
 
 def _run_tag(client, options, args):
   titles_list = googlecl.build_titles_list(options.title, args)
-  entries = client.build_entry_list(user=options.owner or options.user,
-                                    query=options.query,
-                                    titles=titles_list,
-                                    force_photos=True,
-                                    photo_title=options.photo)
-  if entries:
+  if entries := client.build_entry_list(
+      user=options.owner or options.user,
+      query=options.query,
+      titles=titles_list,
+      force_photos=True,
+      photo_title=options.photo,
+  ):
     client.TagPhotos(entries, options.tags, options.summary)
   else:
     LOG.error('No matches for the title and/or query you gave.')

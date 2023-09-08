@@ -46,7 +46,7 @@ def _check_and_set_domain_and_site(client, options, site_optional=False):
   elif not site_optional:
     LOG.error('You must specify --site for this command')
     return
-  LOG.info('domain=%s, site=%s' % (client.domain, client.site))
+  LOG.info(f'domain={client.domain}, site={client.site}')
 
 
 
@@ -144,11 +144,11 @@ def _run_upload(client, options, args):
   # Look for parent if folder given.
   if options.folder:
     if not options.folder.startswith('/'):
-      options.folder = '/' + options.folder
-    uri = client.MakeContentFeedUri() + '?path=' + options.folder
+      options.folder = f'/{options.folder}'
+    uri = f'{client.MakeContentFeedUri()}?path={options.folder}'
     feed = client.GetContentFeed(uri=uri)
     if not feed.entry:
-      LOG.error("Couldn't find Site page %s" % options.folder)
+      LOG.error(f"Couldn't find Site page {options.folder}")
       return
     parent = feed.entry[0]
   else:
@@ -162,7 +162,7 @@ def _run_upload(client, options, args):
     entry = client.CreatePage(options.format, options.title[0], html=src,
                               parent=parent)
   except gdata.client.RequestError as err:
-    LOG.error('Site page creation failed: %s' % err)
+    LOG.error(f'Site page creation failed: {err}')
     return
   LOG.info('created page %s (%s) at %s', entry.title.text,
            entry.page_name.text, entry.GetAlternateLink().href)
@@ -173,11 +173,11 @@ def _run_delete(client, options, args):
   """
   _check_and_set_domain_and_site(client, options)
   if not options.title.startswith('/'):
-    options.title = '/' + options.title
-  uri = client.MakeContentFeedUri() + '?path=' + options.title
+    options.title = f'/{options.title}'
+  uri = f'{client.MakeContentFeedUri()}?path={options.title}'
   feed = client.GetContentFeed(uri=uri)
   if not feed.entry:
-    LOG.error("Couldn't find Site page %s" % options.title)
+    LOG.error(f"Couldn't find Site page {options.title}")
     return
   entry = feed.entry[0]
   LOG.info('deleting page %s (%s) at %s', entry.title.text,

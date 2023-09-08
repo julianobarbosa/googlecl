@@ -23,6 +23,7 @@ List contacts:
   contacts list title,email
 
 """
+
 from __future__ import with_statement
 
 __author__ = 'tom.h.miller@gmail.com (Tom Miller)'
@@ -30,7 +31,7 @@ import logging
 import os.path
 import googlecl.contacts
 
-LOG = logging.getLogger(googlecl.contacts.LOGGER_NAME + '.base')
+LOG = logging.getLogger(f'{googlecl.contacts.LOGGER_NAME}.base')
 
 
 class ContactsBaseCL(object):
@@ -48,13 +49,10 @@ class ContactsBaseCL(object):
       if os.path.exists(contact):
         with open(contact, 'r') as contacts_csv_file:
           for line in contacts_csv_file:
-            entry = self.add_single_contact(line)
-            if entry:
+            if entry := self.add_single_contact(line):
               successes.append(entry)
-      else:
-        entry = self.add_single_contact(contact)
-        if entry:
-          successes.append(entry)
+      elif entry := self.add_single_contact(contact):
+        successes.append(entry)
     return successes
 
   AddContacts = add_contacts

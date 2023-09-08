@@ -28,7 +28,7 @@ def _create_basic_options():
   # These may be useful to define at the module level, but for now,
   # keep them here.
   # REMEMBER: updating these means you need to update the CONFIG readme.
-  default_hostid = getpass.getuser() + '@' +  socket.gethostname()
+  default_hostid = f'{getpass.getuser()}@{socket.gethostname()}'
   _youtube = {'max_results': '50'}
   _contacts = {'fields': 'name,email'}
   _calendar = {'fields': 'title,when'}
@@ -79,13 +79,12 @@ def load_configuration(path=None):
   """
   if not path:
     path = get_config_path(create_missing_dir=True)
-    if not path:
-      LOG.error('Could not create config directory!')
-      return False
+  if not path:
+    LOG.error('Could not create config directory!')
+    return False
   config = parser.ConfigParser(ConfigParser.ConfigParser)
   config.associate(path)
-  made_changes = config.ensure_basic_options(_create_basic_options())
-  if made_changes:
+  if made_changes := config.ensure_basic_options(_create_basic_options()):
     config.write_out_parser()
   # Set the encoding again, now that the config file is loaded.
   # (the config file may have a default encoding setting)

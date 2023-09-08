@@ -96,8 +96,7 @@ RANGE_EXPECTED_START = datetime(year=YEAR, month=11, day=3, hour=21)
 class ParsingDatesTest(unittest.TestCase):
   def assertConvertedEqual(self, text, expected, actual):
     if expected != actual:
-      self.fail('%s was not parsed correctly (%s != %s)'
-                % (text, expected, actual))
+      self.fail(f'{text} was not parsed correctly ({expected} != {actual})')
 
 
 class ParseSingleDateTest(ParsingDatesTest):
@@ -163,7 +162,7 @@ class ParseDateRange(ParsingDatesTest):
     self.assertFalse(date_range.specified_as_range)
 
   def testStartRange(self):
-    text = RANGE_BASE_TEXT + ','
+    text = f'{RANGE_BASE_TEXT},'
     date_range = self.parser.parse(text)
     self.assertConvertedEqual(text,
                               RANGE_EXPECTED_START,
@@ -172,7 +171,7 @@ class ParseDateRange(ParsingDatesTest):
     self.assertTrue(date_range.specified_as_range)
 
   def testStartAndDurationRange(self):
-    text = RANGE_BASE_TEXT + ',+5'
+    text = f'{RANGE_BASE_TEXT},+5'
     date_range = self.parser.parse(text)
     self.assertConvertedEqual(RANGE_BASE_TEXT,
                               RANGE_EXPECTED_START,
@@ -209,7 +208,7 @@ class ParseDateRange(ParsingDatesTest):
 
   def testStartEndRange(self):
     end_text = '11/29'
-    text = RANGE_BASE_TEXT + ',' + end_text
+    text = f'{RANGE_BASE_TEXT},{end_text}'
     date_range = self.parser.parse(text)
     self.assertConvertedEqual(RANGE_BASE_TEXT,
                               RANGE_EXPECTED_START,
@@ -220,7 +219,7 @@ class ParseDateRange(ParsingDatesTest):
     self.assertTrue(date_range.specified_as_range)
 
   def testEndRange(self):
-    text = ',' + RANGE_BASE_TEXT
+    text = f',{RANGE_BASE_TEXT}'
     date_range = self.parser.parse(text)
     self.assertEqual(date_range.start, None)
     self.assertConvertedEqual(text,

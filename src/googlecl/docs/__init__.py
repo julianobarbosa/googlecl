@@ -49,13 +49,12 @@ def get_document_type(entry):
   Returns:
     A string representing the type of document.
   """
-  data_kind_scheme = 'http://schemas.google.com/g/2005#kind'
-  if entry.category:
-    for category in entry.category:
-      if category.scheme == data_kind_scheme:
-        return category.label
-  else:
+  if not entry.category:
     return None
+  data_kind_scheme = 'http://schemas.google.com/g/2005#kind'
+  for category in entry.category:
+    if category.scheme == data_kind_scheme:
+      return category.label
 
 
 def get_extension_from_doctype(doctype_label, config_parser):
@@ -74,7 +73,7 @@ def get_extension_from_doctype(doctype_label, config_parser):
   elif doctype_label == DRAWING_LABEL:
     ext = config_parser.safe_get(SECTION_HEADER, 'drawing_format')
   elif doctype_label is not None:
-    LOG.error('Unknown document type label: %s' % doctype_label)
+    LOG.error(f'Unknown document type label: {doctype_label}')
   if not ext:
     ext = config_parser.safe_get(SECTION_HEADER, 'format')
   return ext
@@ -95,7 +94,7 @@ def get_editor(doctype_label, config_parser):
   Returns:
     Editor to use to edit the document.
   """
-  LOG.debug('In get_editor, doctype_label: ' + str(doctype_label))
+  LOG.debug(f'In get_editor, doctype_label: {str(doctype_label)}')
   editor = None
   if doctype_label == SPREADSHEET_LABEL:
     editor = config_parser.safe_get(SECTION_HEADER, 'spreadsheet_editor')
@@ -106,7 +105,7 @@ def get_editor(doctype_label, config_parser):
   elif doctype_label == PRESENTATION_LABEL:
     editor = config_parser.safe_get(SECTION_HEADER, 'presentation_editor')
   elif doctype_label is not None:
-    LOG.error('Unknown document type label: %s' % doctype_label)
+    LOG.error(f'Unknown document type label: {doctype_label}')
   if not editor:
     editor = config_parser.safe_get(SECTION_HEADER, 'editor')
   if not editor:
@@ -168,7 +167,7 @@ def _run_edit(client, options, args):
   if args:
     LOG.info('Sorry, no support for additional arguments for '
              '"docs edit" yet')
-    LOG.debug('(Ignoring ' + unicode(args) +')')
+    LOG.debug(f'(Ignoring {unicode(args)})')
 
   # python gdata 2.0.15 removed Download and added DownloadResource.
   if not hasattr(client, 'Download') and \
@@ -177,8 +176,7 @@ def _run_edit(client, options, args):
               ' for gdata-python-client < 2.0')
     return
   folder_entry_list = client.get_folder(options.folder)
-  doc_entry = client.get_single_doc(options.title, folder_entry_list)
-  if doc_entry:
+  if doc_entry := client.get_single_doc(options.title, folder_entry_list):
     doc_entry_or_title = doc_entry
     doc_type = get_document_type(doc_entry)
   else:

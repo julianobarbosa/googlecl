@@ -82,7 +82,7 @@ class AuthenticationManager(object):
       Value to use for xoauth display name parameter to avoid worrying users
       with vague requests for access.
     """
-    return 'GoogleCL %s' % hostid
+    return f'GoogleCL {hostid}'
 
   def _move_failed_token_file(self):
     """Backs up failed tokens file."""
@@ -106,20 +106,19 @@ class AuthenticationManager(object):
       The access token, if it exists. If the access token cannot be read,
       returns None.
     """
-    if os.path.exists(self.tokens_path):
-      with open(self.tokens_path, 'rb') as tokens_file:
-        try:
-          tokens_dict = pickle.load(tokens_file)
-        except ImportError:
-          return None
-      try:
-        token = tokens_dict[self.service]
-      except KeyError:
-        return None
-      else:
-        return token
-    else:
+    if not os.path.exists(self.tokens_path):
       return None
+    with open(self.tokens_path, 'rb') as tokens_file:
+      try:
+        tokens_dict = pickle.load(tokens_file)
+      except ImportError:
+        return None
+    try:
+      token = tokens_dict[self.service]
+    except KeyError:
+      return None
+    else:
+      return token
 
   def remove_access_token(self):
     """Removes an auth token.
@@ -181,10 +180,9 @@ class AuthenticationManager(object):
                                 self.client.current_token)
         return True
       else:
-        LOG.error('You specified account ' + self.client.email +
-                  ' but granted access for ' + authorized_account + '.' +
-                  ' Please log out of ' + authorized_account +
-                  ' and grant access with ' + self.client.email + '.')
+        LOG.error(
+            f'You specified account {self.client.email} but granted access for {authorized_account}. Please log out of {authorized_account} and grant access with {self.client.email}.'
+        )
     else:
       LOG.error('Failed to get valid access token!')
     return False
@@ -275,6 +273,6 @@ def get_hd_domain(username, default_domain='default'):
   name, at_sign, domain = username.partition('@')
   # If user specifies gmail.com, it confuses the hd parameter
   # (thanks, bartosh!)
-  if domain == 'gmail.com' or domain == 'googlemail.com':
+  if domain in ['gmail.com', 'googlemail.com']:
     return 'default'
   return domain or default_domain

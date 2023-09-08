@@ -66,9 +66,9 @@ class BaseFormatter(object):
     Returns:
       string, formatted entry.
     """
-    raise NotImplementedError("Abstract method %s.%s called" % \
-                                (self.__class__.__name__,
-                                 inspect.stack()[0][3] ))
+    raise NotImplementedError(
+        f"Abstract method {self.__class__.__name__}.{inspect.stack()[0][3]} called"
+    )
 
   def output(self, entries, stream=sys.stdout):
     """Output list of entries to the output stream.
@@ -164,14 +164,12 @@ def _run_create(client, options, args):
 
 
 def _run_delete(client, options, args):
-  entries = client.get_portfolio_entries(options.title, positions=True)
-  if entries:
+  if entries := client.get_portfolio_entries(options.title, positions=True):
     client.DeleteEntryList(entries, 'portfolio', options.prompt)
 
 
 def _run_list(client, options, args):
-  entries = client.get_portfolio_entries(returns=True)
-  if entries:
+  if entries := client.get_portfolio_entries(returns=True):
     PortfolioFormatter(options.fields).output(entries)
   else:
     LOG.info('No portfolios found')
@@ -179,13 +177,7 @@ def _run_list(client, options, args):
 
 # Position-related tasks
 def _run_create_position(client, options, args):
-  # Quote from Developer's Guide:
-  #   You can't directly create, update, or delete position entries;
-  #   positions are derived from transactions.
-  #   Therefore, to create or modify a position, send appropriate
-  #   transactions on that position.
-  pfl = client.get_portfolio(options.title, positions=True)
-  if pfl:
+  if pfl := client.get_portfolio(options.title, positions=True):
     # create empty transaction
     client.create_transaction(pfl, "Buy", options.ticker)
 
@@ -198,9 +190,9 @@ def _run_delete_positions(client, options, args):
 
 
 def _run_list_positions(client, options, args):
-  positions = client.get_positions(options.title, options.ticker,
-                                   include_returns=True)
-  if positions:
+  if positions := client.get_positions(options.title,
+                                       options.ticker,
+                                       include_returns=True):
     PositionFormatter(options.fields).output(positions)
   else:
     LOG.info('No positions found in this portfolio')
@@ -208,8 +200,7 @@ def _run_list_positions(client, options, args):
 
 # Transaction-related tasks
 def _run_create_transaction(client, options, args):
-  pfl = client.get_portfolio(options.title)
-  if pfl:
+  if pfl := client.get_portfolio(options.title):
     client.create_transaction(pfl, options.ttype, options.ticker,
                               options.shares, options.price,
                               options.currency, options.commission,

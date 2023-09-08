@@ -44,16 +44,15 @@ def cprint(resp, st=1):
   """
   for arg in resp:
     if isinstance(resp, dict):
-      if isinstance(resp[arg], dict) or isinstance(resp[arg], list):  
+      if isinstance(resp[arg], (dict, list)):  
         print (' '*st) + arg + ":"
         cprint(resp[arg], st+2)
       else:
-       try:
-        print (' '*st) + arg + ": " + str(resp[arg])
-       except UnicodeEncodeError:
-        print (' '*st) + arg + ": " + resp[arg]
+        try:
+         print (' '*st) + arg + ": " + str(resp[arg])
+        except UnicodeEncodeError:
+         print (' '*st) + arg + ": " + resp[arg]
+    elif isinstance(arg, (dict, list)):
+      cprint(arg, st)
     else:
-      if isinstance(arg, dict) or isinstance(arg, list):
-        cprint(arg, st)
-      else:
-        print (' '*st) + arg
+      print (' '*st) + arg

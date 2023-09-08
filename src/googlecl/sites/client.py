@@ -18,6 +18,7 @@
 Some use cases:
 
 """
+
 from __future__ import with_statement
 
 import gdata.sites.client
@@ -29,7 +30,7 @@ import googlecl.client
 from googlecl.sites import SECTION_HEADER
 
 
-LOG = logging.getLogger(googlecl.sites.LOGGER_NAME + '.client')
+LOG = logging.getLogger(f'{googlecl.sites.LOGGER_NAME}.client')
 
 
 class SitesClientCL(gdata.sites.client.SitesClient,

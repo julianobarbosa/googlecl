@@ -23,6 +23,7 @@ List contacts:
   contacts list title,email
 
 """
+
 from __future__ import with_statement
 
 __author__ = 'tom.h.miller@gmail.com (Tom Miller)'
@@ -35,7 +36,7 @@ import googlecl.contacts.base
 from googlecl.contacts import SECTION_HEADER
 
 
-LOG = logging.getLogger(googlecl.contacts.LOGGER_NAME + '.service')
+LOG = logging.getLogger(f'{googlecl.contacts.LOGGER_NAME}.service')
 
 
 class ContactsServiceCL(gdata.contacts.service.ContactsService,

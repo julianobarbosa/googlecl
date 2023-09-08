@@ -16,6 +16,7 @@
 """Service details and instances for the Picasa service."""
 
 
+
 from __future__ import with_statement
 
 __author__ = 'tom.h.miller@gmail.com (Tom Miller)'
@@ -55,8 +56,9 @@ SUPPORTED_VIDEO_TYPES = {'wmv': 'video/x-ms-wmv',
 # We're creating a list of the allowed video types stripped of the initial
 # 'video/', eliminating duplicates via set(), then converting to tuple()
 # since that's what gdata.photos.service uses.
-gdata.photos.service.SUPPORTED_UPLOAD_TYPES += \
-   tuple(set([vtype.split('/')[1] for vtype in SUPPORTED_VIDEO_TYPES.values()]))
+gdata.photos.service.SUPPORTED_UPLOAD_TYPES += tuple(
+    {vtype.split('/')[1]
+     for vtype in SUPPORTED_VIDEO_TYPES.values()})
 DOWNLOAD_VIDEO_TYPES = {'swf': 'application/x-shockwave-flash',
                         'mp4': 'video/mpeg4',}
 
@@ -100,17 +102,17 @@ class PhotosServiceCL(PhotosService, googlecl.service.BaseServiceCL):
 
     """
     album_entry = []
-    if titles[0] or not(titles[0] or query):
+    if titles[0] or not query:
       album_entry = self.GetAlbum(user=user, titles=titles)
     if photo_title or query or force_photos:
-      uri = '/data/feed/api/user/' + user
+      uri = f'/data/feed/api/user/{user}'
       if query and not album_entry:
-        entries = self.GetEntries(uri + '?kind=photo&q=' + query, photo_title)
+        entries = self.GetEntries(f'{uri}?kind=photo&q={query}', photo_title)
       else:
         entries = []
         uri += '/albumid/%s?kind=photo'
         if query:
-          uri += '&q=' + query
+          uri += f'&q={query}'
         for album in album_entry:
           photo_entries = self.GetEntries(uri % album.gphoto_id.text,
                                           photo_title)
@@ -135,13 +137,11 @@ class PhotosServiceCL(PhotosService, googlecl.service.BaseServiceCL):
     """
     if date:
       parser = googlecl.calendar.date.DateParser()
-      date = parser.determine_day(date, shift_dates=False)
-      if date:
+      if date := parser.determine_day(date, shift_dates=False):
         timestamp = time.mktime(date.timetuple())
         timestamp_ms = '%i' % int((timestamp * 1000))
       else:
-        LOG.error('Could not parse date %s. (Picasa only takes day info)' %
-                  date)
+        LOG.error(f'Could not parse date {date}. (Picasa only takes day info)')
         timestamp_ms = ''
     else:
       timestamp_ms = ''
@@ -193,17 +193,18 @@ class PhotosServiceCL(PhotosService, googlecl.service.BaseServiceCL):
         url = wanted_content.url
         extension = video_format
       return (url, extension)
+
     # End _get_download_info
 
     if not user:
       user = 'default'
     entries = self.GetAlbum(user=user, titles=titles)
     if video_format not in DOWNLOAD_VIDEO_TYPES.keys():
-      LOG.error('Unsupported video format: ' + video_format)
+      LOG.error(f'Unsupported video format: {video_format}')
       LOG.info('Try one of the following video formats: ' +
                str(DOWNLOAD_VIDEO_TYPES.keys())[1:-1])
       video_format = 'mp4'
-      LOG.info('Downloading videos as ' + video_format)
+      LOG.info(f'Downloading videos as {video_format}')
 
     for album in entries:
       album_path = os.path.join(base_path, safe_decode(album.title.text))
@@ -215,8 +216,7 @@ class PhotosServiceCL(PhotosService, googlecl.service.BaseServiceCL):
           album_concat += 1
       os.makedirs(album_path)
 
-      uri = ('/data/feed/api/user/%s/albumid/%s?kind=photo' %
-             (user, album.gphoto_id.text))
+      uri = f'/data/feed/api/user/{user}/albumid/{album.gphoto_id.text}?kind=photo'
       photo_entries = self.GetEntries(uri, photo_title)
 
       for photo_or_video in photo_entries:
@@ -233,8 +233,10 @@ class PhotosServiceCL(PhotosService, googlecl.service.BaseServiceCL):
           while os.path.exists(path):
             path = base_path + '-%i' % photo_concat
             photo_concat += 1
-        LOG.info(safe_encode('Downloading %s to %s' %
-                             (safe_decode(photo_or_video.title.text), path)))
+        LOG.info(
+            safe_encode(
+                f'Downloading {safe_decode(photo_or_video.title.text)} to {path}'
+            ))
         urllib.urlretrieve(url, path)
 
   DownloadAlbum = download_album
@@ -251,14 +253,14 @@ class PhotosServiceCL(PhotosService, googlecl.service.BaseServiceCL):
       List of albums that match parameters, or [] if none do.
 
     """
-    uri = '/data/feed/api/user/' + user + '?kind=album'
+    uri = f'/data/feed/api/user/{user}?kind=album'
     return self.GetEntries(uri, titles)
 
   GetAlbum = get_album
 
   def get_single_album(self, user='default', title=None):
     """Get a single album."""
-    uri = '/data/feed/api/user/' + user + '?kind=album'
+    uri = f'/data/feed/api/user/{user}?kind=album'
     return self.GetSingleEntry(uri, title=title)
 
   GetSingleAlbum = get_single_album

@@ -28,11 +28,7 @@ def _map_access_string(access_string):
   Returns:
     Boolean indicating True (is a draft) or False (is not a draft).
   """
-  if not access_string:
-    return False
-  if access_string == 'public':
-    return False
-  return True
+  return False if not access_string else access_string != 'public'
 
 
 class BloggerEntryToStringWrapper(googlecl.base.BaseEntryToStringWrapper):

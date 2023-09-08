@@ -82,7 +82,7 @@ class DocManager():
     try:
       doc = json.loads(file(filename).read())
     except:
-      LOG.info('Failed to load ' + filename)
+      LOG.info(f'Failed to load {filename}')
       return
     self.apis[doc['name']+'.'+doc['version']] = doc
     info = {'name': doc['name'], 'version': doc['version']}
@@ -105,12 +105,9 @@ class DocManager():
     # Parses the service name and version
     # If no version is defined, finds the currently preferred one
     servicename = argv[0]
-    if len(argv) > 1:
-      version = argv[1]
-    else:
-      version = None
+    version = argv[1] if len(argv) > 1 else None
     args = argv[2:]
-    if not version or not version[0] == 'v' or not version[1].isdigit():
+    if not version or version[0] != 'v' or not version[1].isdigit():
       version = None
       for api in self.directory['items']:
         if api['name'] == servicename:
@@ -122,12 +119,12 @@ class DocManager():
         return
 
     # Fetches documentation for service
-    if servicename + '.' + version in self.apis:
-      doc = self.apis[servicename + '.' + version]
+    if f'{servicename}.{version}' in self.apis:
+      doc = self.apis[f'{servicename}.{version}']
     else:
       resp, content = http.request(SERVICE_URL % (self.base_url, servicename, version))
       doc = json.loads(content)
-      self.apis[servicename + '.' + version] = doc
+      self.apis[f'{servicename}.{version}'] = doc
 
     if 'error' in doc:
       LOG.error('Did not recognize version.')

@@ -115,10 +115,7 @@ class ConfigParser(object):
     if option_type:
       # bool() function doesn't actually do what we wanted, so intercept it
       # and replace with comparison
-      if option_type == bool:
-        return value.lower() == 'true'
-      else:
-        return option_type(value)
+      return value.lower() == 'true' if option_type == bool else option_type(value)
     else:
       return value
 

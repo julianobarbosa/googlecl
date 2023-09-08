@@ -26,6 +26,7 @@ Download docs:
   docs get --folder "Some folder"
 
 """
+
 from __future__ import with_statement
 
 __author__ = 'tom.h.miller@gmail.com (Tom Miller)'
@@ -43,15 +44,10 @@ safe_encode = googlecl.safe_encode
 safe_decode = googlecl.safe_decode
 
 
-LOG = logging.getLogger(googlecl.docs.LOGGER_NAME + '.base')
+LOG = logging.getLogger(f'{googlecl.docs.LOGGER_NAME}.base')
 
 # For to_safe_filename
-if sys.platform == 'win32':
-  UNSAFE_FILE_CHARS = '\\/:*?"<>|'
-else:
-  UNSAFE_FILE_CHARS = '/'
-
-
+UNSAFE_FILE_CHARS = '\\/:*?"<>|' if sys.platform == 'win32' else '/'
 class DocsError(googlecl.base.Error):
   """Base error for Docs errors."""
   pass
@@ -63,7 +59,7 @@ class DocsBaseCL(object):
 
   # Marked with leading underscore because people should use the method
   # for creating folders appropriate to the superclass.
-  def _create_folder(folder_name, folder_or_uri=None):
+  def _create_folder(self, folder_or_uri=None):
     raise NotImplementedError('_modify_entry must be defined!')
 
   def edit_doc(self, doc_entry_or_title, editor, file_ext,
@@ -245,7 +241,7 @@ class DocsBaseCL(object):
 
   GetDocs = get_docs
 
-  def _modify_entry(doc_entry, path_to_new_content, file_ext):
+  def _modify_entry(self, path_to_new_content, file_ext):
     """Modify the file data associated with a document entry."""
     raise NotImplementedError('_modify_entry must be defined!')
 
@@ -303,24 +299,23 @@ class DocsBaseCL(object):
         for dirpath, dirnames, filenames in os.walk(path):
           directory = os.path.dirname(dirpath)
           folder_name = os.path.basename(dirpath)
-          if directory in folder_entries:
-            fentry = self._create_folder(folder_name, folder_entries[directory])
-          else:
-            fentry = self._create_folder(folder_name, folder_root)
+          fentry = (self._create_folder(folder_name, folder_entries[directory])
+                    if directory in folder_entries else self._create_folder(
+                        folder_name, folder_root))
           folder_entries[dirpath] = fentry
-          LOG.debug('Created folder ' + dirpath + ' ' + folder_name)
+          LOG.debug(f'Created folder {dirpath} {folder_name}')
           for fname in filenames:
-            doc = self.upload_single_doc(os.path.join(dirpath, fname),
-                                         folder_entry=fentry)
-            if doc:
+            if doc := self.upload_single_doc(os.path.join(dirpath, fname),
+                                             folder_entry=fentry):
               doc_entries[fname] = doc
-      else:
-        doc = self.upload_single_doc(path, title=title,
-                                     folder_entry=folder_entry,
-                                     file_ext=file_ext,
-                                     **kwargs)
-        if doc:
-          doc_entries[os.path.basename(path)] = doc
+      elif doc := self.upload_single_doc(
+            path,
+            title=title,
+            folder_entry=folder_entry,
+            file_ext=file_ext,
+            **kwargs,
+        ):
+        doc_entries[os.path.basename(path)] = doc
     return doc_entries
 
   UploadDocs = upload_docs
@@ -412,10 +407,8 @@ def _md5_hash_file(path, read_size=2560):
   import hashlib
   hash_function = hashlib.md5()
   with open(path, 'r') as my_file:
-    data = my_file.read(read_size)
-    while data:
+    while data := my_file.read(read_size):
       hash_function.update(data)
-      data = my_file.read(read_size)
   return hash_function.digest()
 
 
@@ -433,8 +426,7 @@ def can_export(entry_or_url):
     url = entry_or_url
   else:
     url = entry_or_url.content.src
-  can_export = url.find('/Export?') != -1
-  return can_export
+  return url.find('/Export?') != -1
 
 
 def safe_move(src, dst):
@@ -449,15 +441,12 @@ def safe_move(src, dst):
   """
   new_dir = os.path.abspath(dst)
   ext = googlecl.get_extension_from_path(src)
-  if not ext:
-    dotted_ext = ''
-  else:
-    dotted_ext = '.' + ext
+  dotted_ext = '' if not ext else f'.{ext}'
   filename = os.path.basename(src).rstrip(dotted_ext)
   rename_num = 1
   new_path = os.path.join(new_dir, filename + dotted_ext)
   while os.path.exists(new_path):
-    new_filename = filename + '-' + str(rename_num) + dotted_ext
+    new_filename = f'{filename}-{rename_num}{dotted_ext}'
     new_path = os.path.join(new_dir, new_filename)
   shutil.move(src, new_path)
   return new_path

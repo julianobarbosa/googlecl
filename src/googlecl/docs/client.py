@@ -26,6 +26,7 @@ Download docs:
   docs get --folder "Some folder"
 
 """
+
 from __future__ import with_statement
 
 __author__ = 'tom.h.miller@gmail.com (Tom Miller)'
@@ -40,7 +41,7 @@ from googlecl.docs import SECTION_HEADER
 import googlecl.docs.base
 import atom.data
 
-LOG = logging.getLogger(googlecl.docs.LOGGER_NAME + '.client')
+LOG = logging.getLogger(f'{googlecl.docs.LOGGER_NAME}.client')
 
 
 class DocsClientCL(gdata.docs.client.DocsClient,
@@ -184,8 +185,7 @@ class DocsClientCL(gdata.docs.client.DocsClient,
     """
     extra_params = {}
 
-    match = DocsClientCL.FILE_EXT_PATTERN.match(file_path)
-    if match:
+    if match := DocsClientCL.FILE_EXT_PATTERN.match(file_path):
       export_format = match.group(1)
       # Hack for apps-api-issues Issue 2294
       if export_format.lower() == 'html':
@@ -255,20 +255,18 @@ class DocsClientCL(gdata.docs.client.DocsClient,
       None if there were no matches, or one entry matching the given title.
 
     """
-    if folder_entry_list:
-      if len(folder_entry_list) == 1:
-        return self.GetSingleEntry(folder_entry_list[0].content.src,
-                                   title,
-                                   desired_class=self._doclist_class())
-      else:
-        entries = self.get_doclist(title, folder_entry_list)
-        # Technically don't need the desired_class for this call
-        # because we have the entries.
-        return self.GetSingleEntry(entries, title)
-    else:
+    if not folder_entry_list:
       return self.GetSingleEntry(DocsClientCL.DOCLIST_FEED_URI,
                                  title,
                                  desired_class=self._doclist_class())
+    if len(folder_entry_list) == 1:
+      return self.GetSingleEntry(folder_entry_list[0].content.src,
+                                 title,
+                                 desired_class=self._doclist_class())
+    entries = self.get_doclist(title, folder_entry_list)
+    # Technically don't need the desired_class for this call
+    # because we have the entries.
+    return self.GetSingleEntry(entries, title)
 
   GetSingleDoc = get_single_doc
 
@@ -283,10 +281,10 @@ class DocsClientCL(gdata.docs.client.DocsClient,
 
     """
     if title:
-      uri = DocsClientCL.DOCLIST_FEED_URI + '/-/folder'
+      uri = f'{DocsClientCL.DOCLIST_FEED_URI}/-/folder'
       folder_entries = self.GetEntries(uri, title)
       if not folder_entries:
-        LOG.warning('No folder found that matches ' + title)
+        LOG.warning(f'No folder found that matches {title}')
       return folder_entries
     else:
       return None
@@ -359,15 +357,12 @@ class DocsClientCL(gdata.docs.client.DocsClient,
       Entry representing the document uploaded.
     """
 
-    # GoogleCL that uses gdata-2.0.0 through 2.0.4 won't ever see this code.
-    # If it uses gdata-2.0.5 through 2.0.7, it would otherwise give an error
-    # about a resumable uploader that it doesn't have. This avoids that error.
-    # If it uses gdata-2.0.8, 2.0.9, or 2.0.11 it can't upload docs due to an SSL error.
-    # If it uses gdata-2.0.10, 2.0.12, or later, this should allow it to
-    # upload all allowable file types.
-
-    if hasattr(gdata.client,"ResumableUploader"):
-      f = open(path)
+    if not hasattr(gdata.client, "ResumableUploader"):
+      # If we have reached this point, we must be in gdata-2.0.5 through 2.0.7
+      # The upload is guaranteed to fail, so the self.upload call is here to
+      # return whatever the caller wanted.
+      return self.upload(path, entry_title, post_uri, content_type)
+    with open(path) as f:
       file_size = os.path.getsize(f.name)
       uploader = gdata.client.ResumableUploader(
           self, f, content_type, file_size, chunk_size=1048576,
@@ -376,17 +371,6 @@ class DocsClientCL(gdata.docs.client.DocsClient,
       # Set metadata for our upload.
       entry = gdata.data.GDEntry(title=atom.data.Title(text=entry_title))
       new_entry = uploader.UploadFile('/feeds/upload/create-session/default/private/full', entry=entry)
-      # These might be useful for a verbose debug statement:
-      # print 'Document uploaded: ' + new_entry.title.text
-      # print 'Quota used: %s' % new_entry.quota_bytes_used.text
-      f.close()
-
-      return new_entry
-
-    else:
-      # If we have reached this point, we must be in gdata-2.0.5 through 2.0.7
-      # The upload is guaranteed to fail, so the self.upload call is here to
-      # return whatever the caller wanted.
-      return self.upload(path, entry_title, post_uri, content_type)
+    return new_entry
 
 SERVICE_CLASS = DocsClientCL

@@ -193,7 +193,7 @@ class AbstractRpcServer(object):
     self.host = host
     if (not self.host.startswith("http://") and
         not self.host.startswith("https://")):
-      self.host = "http://" + self.host
+      self.host = f"http://{self.host}"
     self.host_override = host_override
     self.auth_function = auth_function
     self.authenticated = False
@@ -412,7 +412,7 @@ class HttpRpcServer(AbstractRpcServer):
     """Save the cookie jar after authentication."""
     super(HttpRpcServer, self)._Authenticate()
     if self.save_cookies:
-      StatusUpdate("Saving authentication cookies to %s" % self.cookie_file)
+      StatusUpdate(f"Saving authentication cookies to {self.cookie_file}")
       self.cookie_jar.save()
 
   def _GetOpener(self):
@@ -620,26 +620,25 @@ def EncodeMultipartFormData(fields, files):
   BOUNDARY = '-M-A-G-I-C---B-O-U-N-D-A-R-Y-'
   CRLF = '\r\n'
   lines = []
-  for (key, value) in fields:
-    lines.append('--' + BOUNDARY)
-    lines.append('Content-Disposition: form-data; name="%s"' % key)
-    lines.append('')
+  for key, value in fields:
+    lines.extend(
+        (f'--{BOUNDARY}', f'Content-Disposition: form-data; name="{key}"', ''))
     if isinstance(value, unicode):
       value = value.encode('utf-8')
     lines.append(value)
-  for (key, filename, value) in files:
-    lines.append('--' + BOUNDARY)
-    lines.append('Content-Disposition: form-data; name="%s"; filename="%s"' %
-             (key, filename))
-    lines.append('Content-Type: %s' % GetContentType(filename))
-    lines.append('')
+  for key, filename, value in files:
+    lines.extend((
+        f'--{BOUNDARY}',
+        f'Content-Disposition: form-data; name="{key}"; filename="{filename}"',
+        f'Content-Type: {GetContentType(filename)}',
+        '',
+    ))
     if isinstance(value, unicode):
       value = value.encode('utf-8')
     lines.append(value)
-  lines.append('--' + BOUNDARY + '--')
-  lines.append('')
+  lines.extend((f'--{BOUNDARY}--', ''))
   body = CRLF.join(lines)
-  content_type = 'multipart/form-data; boundary=%s' % BOUNDARY
+  content_type = f'multipart/form-data; boundary={BOUNDARY}'
   return content_type, body
 
 
@@ -696,7 +695,7 @@ def RunShell(command, silent_ok=False, universal_newlines=True,
   if retcode:
     ErrorExit("Got error status from %s:\n%s" % (command, data))
   if not silent_ok and not data:
-    ErrorExit("No output from %s" % command)
+    ErrorExit(f"No output from {command}")
   return data
 
 
@@ -723,12 +722,12 @@ class VersionControlSystem(object):
       args: Extra arguments to pass to the diff command.
     """
     raise NotImplementedError(
-        "abstract method -- subclass %s must override" % self.__class__)
+        f"abstract method -- subclass {self.__class__} must override")
 
   def GetUnknownFiles(self):
     """Return a list of files unknown to the VCS."""
     raise NotImplementedError(
-        "abstract method -- subclass %s must override" % self.__class__)
+        f"abstract method -- subclass {self.__class__} must override")
 
   def CheckForUnknownFiles(self):
     """Show an "are you sure?" prompt if there are unknown files."""
@@ -756,7 +755,7 @@ class VersionControlSystem(object):
     """
 
     raise NotImplementedError(
-        "abstract method -- subclass %s must override" % self.__class__)
+        f"abstract method -- subclass {self.__class__} must override")
 
 
   def GetBaseFiles(self, diff):
@@ -833,19 +832,16 @@ class VersionControlSystem(object):
   def IsImage(self, filename):
     """Returns true if the filename has an image extension."""
     mimetype =  mimetypes.guess_type(filename)[0]
-    if not mimetype:
-      return False
-    return mimetype.startswith("image/")
+    return False if not mimetype else mimetype.startswith("image/")
 
   def IsBinary(self, filename):
     """Returns true if the guessed mimetyped isnt't in text group."""
-    mimetype = mimetypes.guess_type(filename)[0]
-    if not mimetype:
+    if mimetype := mimetypes.guess_type(filename)[0]:
+        # special case for text files which don't start with text/
+      return (False if mimetype in TEXT_MIMETYPES else
+              not mimetype.startswith("text/"))
+    else:
       return False  # e.g. README, "real" binaries usually have an extension
-    # special case for text files which don't start with text/
-    if mimetype in TEXT_MIMETYPES:
-      return False
-    return not mimetype.startswith("text/")
 
 
 class SubversionVCS(VersionControlSystem):
@@ -856,7 +852,7 @@ class SubversionVCS(VersionControlSystem):
     if self.options.revision:
       match = re.match(r"(\d+)(:(\d+))?", self.options.revision)
       if not match:
-        ErrorExit("Invalid Subversion revision %s." % self.options.revision)
+        ErrorExit(f"Invalid Subversion revision {self.options.revision}.")
       self.rev_start = match.group(1)
       self.rev_end = match.group(3)
     else:
@@ -894,21 +890,21 @@ class SubversionVCS(VersionControlSystem):
             if path.startswith("/projects/"):
               path = path[9:]
           elif netloc != "pythondev@svn.python.org":
-            ErrorExit("Unrecognized Python URL: %s" % url)
-          base = "http://svn.python.org/view/*checkout*%s/" % path
+            ErrorExit(f"Unrecognized Python URL: {url}")
+          base = f"http://svn.python.org/view/*checkout*{path}/"
           logging.info("Guessed Python base = %s", base)
         elif netloc.endswith("svn.collab.net"):
           if path.startswith("/repos/"):
             path = path[6:]
-          base = "http://svn.collab.net/viewvc/*checkout*%s/" % path
+          base = f"http://svn.collab.net/viewvc/*checkout*{path}/"
           logging.info("Guessed CollabNet base = %s", base)
         elif netloc.endswith(".googlecode.com"):
-          path = path + "/"
+          path = f"{path}/"
           base = urlparse.urlunparse(("http", netloc, path, params,
                                       query, fragment))
           logging.info("Guessed Google Code base = %s", base)
         else:
-          path = path + "/"
+          path = f"{path}/"
           base = urlparse.urlunparse((scheme, netloc, path, params,
                                       query, fragment))
           logging.info("Guessed base = %s", base)
@@ -955,9 +951,10 @@ class SubversionVCS(VersionControlSystem):
     }
 
     def repl(m):
-       if m.group(2):
-         return "$%s::%s$" % (m.group(1), " " * len(m.group(3)))
-       return "$%s$" % m.group(1)
+      if m.group(2):
+        return f'${m.group(1)}::{" " * len(m.group(3))}$'
+      return f"${m.group(1)}$"
+
     keywords = [keyword
                 for name in keyword_str.split(" ")
                 for keyword in svn_keywords.get(name, [])]
@@ -965,11 +962,7 @@ class SubversionVCS(VersionControlSystem):
 
   def GetUnknownFiles(self):
     status = RunShell(["svn", "status", "--ignore-externals"], silent_ok=True)
-    unknown_files = []
-    for line in status.split("\n"):
-      if line and line[0] == "?":
-        unknown_files.append(line)
-    return unknown_files
+    return [line for line in status.split("\n") if line and line[0] == "?"]
 
   def ReadFile(self, filename):
     """Returns the contents of a file."""
@@ -986,7 +979,7 @@ class SubversionVCS(VersionControlSystem):
     if not self.options.revision:
       status = RunShell(["svn", "status", "--ignore-externals", filename])
       if not status:
-        ErrorExit("svn status returned no output for %s" % filename)
+        ErrorExit(f"svn status returned no output for {filename}")
       status_lines = status.splitlines()
       # If file is in a cl, the output will begin with
       # "\n--- Changelist 'cl_name':\n".  See
@@ -997,16 +990,13 @@ class SubversionVCS(VersionControlSystem):
         status = status_lines[2]
       else:
         status = status_lines[0]
-    # If we have a revision to diff against we need to run "svn list"
-    # for the old and the new revision and compare the results to get
-    # the correct status for a file.
     else:
       dirname, relfilename = os.path.split(filename)
       if dirname not in self.svnls_cache:
         cmd = ["svn", "list", "-r", self.rev_start, dirname or "."]
         out, returncode = RunShellWithReturnCode(cmd)
         if returncode:
-          ErrorExit("Failed to get status for %s." % filename)
+          ErrorExit(f"Failed to get status for {filename}.")
         old_files = out.splitlines()
         args = ["svn", "list"]
         if self.rev_end:
@@ -1014,12 +1004,12 @@ class SubversionVCS(VersionControlSystem):
         cmd = args + [dirname or "."]
         out, returncode = RunShellWithReturnCode(cmd)
         if returncode:
-          ErrorExit("Failed to run command %s" % cmd)
+          ErrorExit(f"Failed to run command {cmd}")
         self.svnls_cache[dirname] = (old_files, out.splitlines())
       old_files, new_files = self.svnls_cache[dirname]
       if relfilename in old_files and relfilename not in new_files:
         status = "D   "
-      elif relfilename in old_files and relfilename in new_files:
+      elif relfilename in old_files:
         status = "M   "
       else:
         status = "A   "
@@ -1043,12 +1033,11 @@ class SubversionVCS(VersionControlSystem):
       is_binary = bool(mimetype) and not mimetype.startswith("text/")
       if is_binary and self.IsImage(filename):
         new_content = self.ReadFile(filename)
-    elif (status[0] in ("M", "D", "R") or
-          (status[0] == "A" and status[3] == "+") or  # Copied file.
-          (status[0] == " " and status[1] == "M")):  # Property change.
+    elif (status[0] in ("M", "D", "R") or status[0] == "A"
+          or status[0] == " " and status[1] == "M"):# Property change.
       args = []
       if self.options.revision:
-        url = "%s/%s@%s" % (self.svn_base, filename, self.rev_start)
+        url = f"{self.svn_base}/{filename}@{self.rev_start}"
       else:
         # Don't change filename, it's needed later.
         url = filename
@@ -1061,52 +1050,47 @@ class SubversionVCS(VersionControlSystem):
         mimetype = ""
       get_base = False
       is_binary = bool(mimetype) and not mimetype.startswith("text/")
-      if status[0] == " ":
-        # Empty base content just to force an upload.
+      if status[0] != " " and is_binary and self.IsImage(filename):
+        get_base = True
+        if status[0] == "M":
+          if not self.rev_end:
+            new_content = self.ReadFile(filename)
+          else:
+            url = f"{self.svn_base}/{filename}@{self.rev_end}"
+            new_content = RunShell(["svn", "cat", url],
+                                   universal_newlines=True, silent_ok=True)
+      elif (status[0] != " " and is_binary and not self.IsImage(filename)
+            or status[0] == " "):
         base_content = ""
-      elif is_binary:
-        if self.IsImage(filename):
-          get_base = True
-          if status[0] == "M":
-            if not self.rev_end:
-              new_content = self.ReadFile(filename)
-            else:
-              url = "%s/%s@%s" % (self.svn_base, filename, self.rev_end)
-              new_content = RunShell(["svn", "cat", url],
-                                     universal_newlines=True, silent_ok=True)
-        else:
-          base_content = ""
       else:
         get_base = True
 
       if get_base:
-        if is_binary:
-          universal_newlines = False
-        else:
-          universal_newlines = True
+        universal_newlines = not is_binary
         if self.rev_start:
           # "svn cat -r REV delete_file.txt" doesn't work. cat requires
           # the full URL with "@REV" appended instead of using "-r" option.
-          url = "%s/%s@%s" % (self.svn_base, filename, self.rev_start)
+          url = f"{self.svn_base}/{filename}@{self.rev_start}"
           base_content = RunShell(["svn", "cat", url],
                                   universal_newlines=universal_newlines,
                                   silent_ok=True)
         else:
           base_content, ret_code = RunShellWithReturnCode(
             ["svn", "cat", filename], universal_newlines=universal_newlines)
-          if ret_code and status[0] == "R":
-            # It's a replaced file without local history (see issue208).
-            # The base file needs to be fetched from the server.
-            url = "%s/%s" % (self.svn_base, filename)
-            base_content = RunShell(["svn", "cat", url],
-                                    universal_newlines=universal_newlines,
-                                    silent_ok=True)
-          elif ret_code:
-            ErrorExit("Got error status from 'svn cat %s'" % filename)
+          if ret_code:
+            if status[0] == "R":
+                        # It's a replaced file without local history (see issue208).
+                        # The base file needs to be fetched from the server.
+              url = f"{self.svn_base}/{filename}"
+              base_content = RunShell(["svn", "cat", url],
+                                      universal_newlines=universal_newlines,
+                                      silent_ok=True)
+            else:
+              ErrorExit(f"Got error status from 'svn cat {filename}'")
         if not is_binary:
           args = []
           if self.rev_start:
-            url = "%s/%s@%s" % (self.svn_base, filename, self.rev_start)
+            url = f"{self.svn_base}/{filename}@{self.rev_start}"
           else:
             url = filename
             args += ["-r", "BASE"]
@@ -1115,9 +1099,9 @@ class SubversionVCS(VersionControlSystem):
           if keywords and not returncode:
             base_content = self._CollapseKeywords(base_content, keywords)
     else:
-      StatusUpdate("svn status returned unexpected output: %s" % status)
+      StatusUpdate(f"svn status returned unexpected output: {status}")
       sys.exit(1)
-    return base_content, new_content, is_binary, status[0:5]
+    return base_content, new_content, is_binary, status[:5]
 
 
 class GitVCS(VersionControlSystem):
@@ -1215,7 +1199,7 @@ class GitVCS(VersionControlSystem):
     data, retcode = RunShellWithReturnCode(["git", "show", file_hash],
                                             universal_newlines=not is_binary)
     if retcode:
-      ErrorExit("Got error status from 'git show %s'" % file_hash)
+      ErrorExit(f"Got error status from 'git show {file_hash}'")
     return data
 
   def GetBaseFile(self, filename):
@@ -1229,7 +1213,7 @@ class GitVCS(VersionControlSystem):
       status = "A +"  # Match svn attribute name for renames.
       if filename not in self.hashes:
         # If a rename doesn't change the content, we never get a hash.
-        base_content = RunShell(["git", "show", "HEAD:" + filename])
+        base_content = RunShell(["git", "show", f"HEAD:{filename}"])
     elif not hash_before:
       status = "A"
       base_content = ""
@@ -1246,10 +1230,10 @@ class GitVCS(VersionControlSystem):
       # Grab the base content if we don't have it already.
       if base_content is None and hash_before:
         base_content = self.GetFileContent(hash_before, is_binary)
-      # Only include the "after" file if it's an image; otherwise it
-      # it is reconstructed from the diff.
-      if is_image and hash_after:
-        new_content = self.GetFileContent(hash_after, is_binary)
+    # Only include the "after" file if it's an image; otherwise it
+    # it is reconstructed from the diff.
+    if is_image and hash_after:
+      new_content = self.GetFileContent(hash_after, is_binary)
 
     return (base_content, new_content, is_binary, status)
 
@@ -1282,16 +1266,14 @@ class MercurialVCS(VersionControlSystem):
     svndiff = []
     filecount = 0
     for line in data.splitlines():
-      m = re.match("diff --git a/(\S+) b/(\S+)", line)
-      if m:
+      if m := re.match("diff --git a/(\S+) b/(\S+)", line):
         # Modify line to make it look like as it comes from svn diff.
         # With this modification no changes on the server side are required
         # to make upload.py work with Mercurial repos.
         # NOTE: for proper handling of moved/copied files, we have to use
         # the second filename.
         filename = m.group(2)
-        svndiff.append("Index: %s" % filename)
-        svndiff.append("=" * 67)
+        svndiff.extend((f"Index: {filename}", "=" * 67))
         filecount += 1
         logging.info(line)
       else:
@@ -1325,7 +1307,7 @@ class MercurialVCS(VersionControlSystem):
     out = out.splitlines()
     # HACK: strip error message about missing file/directory if it isn't in
     # the working copy
-    if out[0].startswith('%s: ' % relpath):
+    if out[0].startswith(f'{relpath}: '):
       out = out[1:]
     if len(out) > 1:
       # Moved/copied => considered as modified, use old filename to
@@ -1542,11 +1524,11 @@ def LoadSubversionAutoProperties():
       config.has_option("miscellany", "enable-auto-props") and
       config.getboolean("miscellany", "enable-auto-props") and
       config.has_section("auto-props")):
-    props = {}
-    for file_pattern in config.options("auto-props"):
-      props[file_pattern] = ParseSubversionPropertyValues(
-        config.get("auto-props", file_pattern))
-    return props
+    return {
+        file_pattern:
+        ParseSubversionPropertyValues(config.get("auto-props", file_pattern))
+        for file_pattern in config.options("auto-props")
+    }
   else:
     return {}
 
@@ -1620,11 +1602,11 @@ def FormatSubversionPropertyChanges(filename, props):
   <BLANKLINE>
   """
   prop_changes_lines = [
-    "Property changes on: %s" % filename,
-    "___________________________________________________________________"]
+      f"Property changes on: {filename}",
+      "___________________________________________________________________",
+  ]
   for key, value in props:
-    prop_changes_lines.append("Added: " + key)
-    prop_changes_lines.append("   + " + value)
+    prop_changes_lines.extend((f"Added: {key}", f"   + {value}"))
   return "\n".join(prop_changes_lines) + "\n"
 
 

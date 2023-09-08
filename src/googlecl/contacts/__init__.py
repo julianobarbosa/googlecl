@@ -26,12 +26,11 @@ class ContactsEntryToStringWrapper(googlecl.base.BaseEntryToStringWrapper):
     if self.entry.postal_address:
       # For v1 of gdata ("service" modules)?
       return self._join(self.entry.postal_address, text_attribute='text')
-    else:
-      # For v3 of gdata ("client" modules)?
-      get_address_text = \
+    # For v3 of gdata ("client" modules)?
+    get_address_text = \
           lambda address: getattr(getattr(address, 'formatted_address'), 'text')
-      return self._join(self.entry.structured_postal_address,
-                        text_extractor=get_address_text)
+    return self._join(self.entry.structured_postal_address,
+                      text_extractor=get_address_text)
   where = address
 
   @property
@@ -51,13 +50,10 @@ class ContactsEntryToStringWrapper(googlecl.base.BaseEntryToStringWrapper):
     get_start_time = lambda event: getattr(getattr(event, 'when'), 'start')
     events = self._join(self.entry.event, text_extractor=get_start_time,
                         label_attribute='rel')
-    # Birthdays are technically their own element, but add them in here because
-    # that policy is silly (as far as the end user is concerned).
     if self.label_delimiter is None:
-      return events + ' ' + self.birthday
-    else:
-      label = ' birthday%s' % self.label_delimiter
-      return events + self.intra_property_delimiter + label + self.birthday
+      return f'{events} {self.birthday}'
+    label = f' birthday{self.label_delimiter}'
+    return events + self.intra_property_delimiter + label + self.birthday
   events = event
   dates = event
   when = event
@@ -70,7 +66,7 @@ class ContactsEntryToStringWrapper(googlecl.base.BaseEntryToStringWrapper):
 
   @property
   def job(self):
-    return self.title + ' at '  + self.organization
+    return f'{self.title} at {self.organization}'
 
   @property
   def notes(self):

@@ -81,7 +81,7 @@ class YouTubeServiceCL(YouTubeService, googlecl.service.BaseServiceCL):
       List of videos that match parameters, or [] if none do.
 
     """
-    uri = 'http://gdata.youtube.com/feeds/api/users/' + user + '/uploads'
+    uri = f'http://gdata.youtube.com/feeds/api/users/{user}/uploads'
     return self.GetEntries(uri,
                            titles,
                            converter=gdata.youtube.YouTubeVideoFeedFromString)
